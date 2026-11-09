@@ -1,0 +1,9 @@
+.clasp.json
+.clasprc.json
+.env
+*.xlsx
+*.xls
+*.csv
+*.sqlite
+*.db
+node_modules/
