@@ -106,7 +106,6 @@ function lookupBalance(session, employeeId) {
   const row = matches[0];
   const result = {};
   expected.forEach((key, i) => { const v = row[indexes[i]]; result[key] = v instanceof Date ? Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd') : (v === '' ? null : String(v)); });
-  result.name = result.name ? maskName_(result.name) : null;
   return result;
 }
 
@@ -114,12 +113,5 @@ function normalizeEmployeeId_(value) {
   return String(value == null ? '' : value).normalize('NFKC').replace(/[\s-]+/g, '').toLowerCase();
 }
 
-// Mask on the server so the browser never receives the unmasked personnel name.
-function maskName_(name) {
-  return String(name).replace(/[\p{L}\p{M}]+/gu, word => {
-    const chars = Array.from(word);
-    return chars.length > 1 ? chars[0] + '*'.repeat(chars.length - 1) : '*';
-  });
-}
 function normalize_(v) { return String(v || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase(); }
 function signOut(session) { if (/^[0-9a-f]{64}$/i.test(String(session || ''))) CacheService.getScriptCache().remove('session:' + session); }

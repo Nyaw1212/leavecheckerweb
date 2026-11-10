@@ -30,4 +30,3 @@ This repo does **not** calculate leave credits or automatically read the Windows
 
 Set Script Property `ALLOW_UNAUTHENTICATED` to the exact value `true` to disable Google sign-in. Anyone who can reach the deployment can look up balances by employee number; employee IDs are not secrets. Use dummy data only. Set the property to `false` or delete it to restore sign-in. Do not remove existing OAuth configuration. The server checks this property for each lookup.
 
-Personnel names are masked in lookup responses. Masking is not authentication and does not prevent someone who knows an employee number from accessing that employee's balances.
