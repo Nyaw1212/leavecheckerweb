@@ -118,7 +118,6 @@ function authorizedConfig_(session) {
 function searchPersonnel(session, query) {
   const config = authorizedConfig_(session);
   const q = normalize_(query);
-  if (q.length < 2) return {items: [], more: false};
   if (q.length > 200) throw Error('Search text is too long.');
   const sheet = SpreadsheetApp.openById(config.spreadsheet).getSheetByName(SHEET_NAME);
   if (!sheet) throw Error('The balance sheet is unavailable.');
@@ -137,7 +136,7 @@ function searchPersonnel(session, query) {
       const key = normalizeEmployeeId_(id);
       return {name: String(row[ni]), employeeId: id, selectable: !!key && counts[key] === 1};
     }).sort((a, b) => a.name.localeCompare(b.name) || a.employeeId.localeCompare(b.employeeId));
-  return {items: found.slice(0, 50), more: found.length > 50};
+  return {items: found, more: false};
 }
 
 function normalizeEmployeeId_(value) {

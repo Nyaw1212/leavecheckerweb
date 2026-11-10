@@ -5,7 +5,7 @@
 [hidden]{display:none!important}
 </style></head><body><main class="wrap"><div class="eyebrow">PERSONNEL SERVICES</div><h1>Leave Balance Lookup</h1><p>View the latest published leave balance for a personnel record.</p><p id="message" role="status"></p>
 <section id="signin" class="panel" hidden><h2>Authorized staff sign-in</h2><p>Sign in using your approved Google account to continue.</p><a id="auth" class="sign">Sign in with Google</a></section>
-<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Type at least 2 letters"><p id="searchStatus" class="muted" aria-live="polite">Enter a name to find personnel.</p><div id="nameList" class="name-list" aria-label="Matching personnel"></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p></section>
+<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><div id="nameList" class="name-list" aria-label="Matching personnel"></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p></section>
 </div></div></main>
 <script>
 const anonymousMode = <?!= JSON.stringify(anonymousMode) ?>;
@@ -19,36 +19,38 @@ document.getElementById('logout').hidden=anonymousMode;
 if(authUrl) document.getElementById('auth').href=authUrl; else document.getElementById('auth').href=appUrl;
 let lookupGeneration = 0;
 document.getElementById('form').addEventListener('submit',e=>{e.preventDefault();const currentLookup=++lookupGeneration;msg.textContent='Looking up balance…'; document.getElementById('result').hidden=true;document.getElementById('submit').disabled=true;google.script.run.withSuccessHandler(r=>{if(currentLookup!==lookupGeneration)return;document.getElementById('submit').disabled=false;if(!r){msg.textContent='No unique match found. Check the employee number, or contact personnel services.';return;}msg.textContent='';document.getElementById('employee').textContent=r.name;document.getElementById('period').textContent='AS OF '+(r.as_of||'unavailable');document.getElementById('updated').textContent='Snapshot updated: '+(r.updated_at||'unavailable');for(const key of ['vl','sl','fl','wl','spl'])document.getElementById(key).textContent=r[key]===null?'—':r[key];document.getElementById('selectPrompt').hidden=true;document.getElementById('result').hidden=false;}).withFailureHandler(()=>{if(currentLookup!==lookupGeneration)return;document.getElementById('submit').disabled=false;msg.textContent='Lookup unavailable or session expired. Sign in again or contact the administrator.';}).lookupBalance(session,document.getElementById('employeeId').value)});
-let searchTimer = null, searchGeneration = 0;
+let personnel = null;
 const nameSearch = document.getElementById('nameSearch'), nameList = document.getElementById('nameList'), searchStatus = document.getElementById('searchStatus');
-nameSearch.addEventListener('input', () => {
-  clearTimeout(searchTimer);
-  const generation = ++searchGeneration, query = nameSearch.value.trim();
+function filterPersonnel() {
+  if (!personnel) return;
+  const query = nameSearch.value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
+  const found = personnel.filter(person => person.name.normalize('NFKC').replace(/\s+/g, ' ').toLowerCase().includes(query));
   nameList.replaceChildren();
-  if (query.length < 2) { searchStatus.textContent = 'Enter at least 2 letters.'; return; }
-  searchStatus.textContent = 'Searching…';
-  searchTimer = setTimeout(() => {
-    google.script.run.withSuccessHandler(result => {
-      if (generation !== searchGeneration) return;
-      nameList.replaceChildren();
-      searchStatus.textContent = result.items.length ? (result.more ? 'First 50 matches; type more to narrow results.' : result.items.length + ' matching personnel.') : 'No matching names.';
-      result.items.forEach(person => {
-        const button = document.createElement('button');
-        button.type = 'button'; button.className = 'person-row'; button.disabled = !person.selectable;
-        const name = document.createElement('span'); name.textContent = person.name; button.appendChild(name);
-        const id = document.createElement('span'); id.className = 'person-id'; id.textContent = person.selectable ? person.employeeId : 'Employee number missing or duplicated — review'; button.appendChild(id);
-        button.addEventListener('click', () => {
-          nameList.querySelectorAll('.person-row').forEach(node => node.classList.remove('selected'));
-          button.classList.add('selected');
-          document.getElementById('employeeId').value = person.employeeId;
-          document.getElementById('form').requestSubmit();
-        });
-        nameList.appendChild(button);
-      });
-    }).withFailureHandler(() => {
-      if (generation === searchGeneration) searchStatus.textContent = 'Name search unavailable. Sign in again or contact the administrator.';
-    }).searchPersonnel(session, query);
-  }, 300);
-});
+  searchStatus.textContent = found.length ? found.length + ' matching personnel.' : 'No matching names.';
+  const fragment = document.createDocumentFragment();
+  found.forEach(person => {
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'person-row'; button.disabled = !person.selectable;
+    const name = document.createElement('span'); name.textContent = person.name; button.appendChild(name);
+    const id = document.createElement('span'); id.className = 'person-id'; id.textContent = person.selectable ? person.employeeId : 'Employee number missing or duplicated — review'; button.appendChild(id);
+    button.addEventListener('click', () => {
+      nameList.querySelectorAll('.person-row').forEach(node => node.classList.remove('selected'));
+      button.classList.add('selected');
+      document.getElementById('employeeId').value = person.employeeId;
+      document.getElementById('form').requestSubmit();
+    });
+    fragment.appendChild(button);
+  });
+  nameList.appendChild(fragment);
+}
+nameSearch.addEventListener('input', filterPersonnel);
+if (anonymousMode || session) {
+  google.script.run.withSuccessHandler(result => {
+    personnel = result.items;
+    filterPersonnel();
+  }).withFailureHandler(() => {
+    searchStatus.textContent = 'Could not load personnel. Sign in again or contact the administrator.';
+  }).searchPersonnel(session, '');
+}
 document.getElementById('logout').addEventListener('click',()=>{google.script.run.signOut(session);session='';document.getElementById('result').hidden=true;document.getElementById('workspace').hidden=true;document.getElementById('signin').hidden=false;window.top.location.href=appUrl});
 </script></body></html>
