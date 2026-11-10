@@ -84,12 +84,7 @@ function finishSignIn_(p, config) {
 
 /** Google sign-in is required unless the administrator enables unauthenticated access. */
 function lookupBalance(session, employeeId) {
-  const config = config_();
-  if (!config.anonymous) {
-    if (!/^[0-9a-f]{64}$/i.test(String(session || ''))) throw Error('Please sign in again.');
-    const email = CacheService.getScriptCache().get('session:' + session);
-    if (!email || !config.emails.includes(email)) throw Error('Please sign in again.');
-  }
+  const config = authorizedConfig_(session);
   employeeId = String(employeeId || '').trim();
   if (!employeeId || employeeId.length > 100 || !normalizeEmployeeId_(employeeId)) throw Error('Enter an employee number.');
   const sheet = SpreadsheetApp.openById(config.spreadsheet).getSheetByName(SHEET_NAME);
@@ -107,6 +102,42 @@ function lookupBalance(session, employeeId) {
   const result = {};
   expected.forEach((key, i) => { const v = row[indexes[i]]; result[key] = v instanceof Date ? Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd') : (v === '' ? null : String(v)); });
   return result;
+}
+
+// Both name search and balance lookup enforce the same access settings.
+function authorizedConfig_(session) {
+  const config = config_();
+  if (!config.anonymous) {
+    if (!/^[0-9a-f]{64}$/i.test(String(session || ''))) throw Error('Please sign in again.');
+    const email = CacheService.getScriptCache().get('session:' + session);
+    if (!email || !config.emails.includes(email)) throw Error('Please sign in again.');
+  }
+  return config;
+}
+
+function searchPersonnel(session, query) {
+  const config = authorizedConfig_(session);
+  const q = normalize_(query);
+  if (q.length < 2) return {items: [], more: false};
+  if (q.length > 200) throw Error('Search text is too long.');
+  const sheet = SpreadsheetApp.openById(config.spreadsheet).getSheetByName(SHEET_NAME);
+  if (!sheet) throw Error('The balance sheet is unavailable.');
+  const rows = sheet.getDataRange().getValues();
+  const headings = (rows.shift() || []).map(x => String(x).trim().toLowerCase());
+  const ni = headings.indexOf('name'), ii = headings.indexOf('employee_id');
+  if (ni < 0 || ii < 0) throw Error('The balance sheet is not configured correctly.');
+  const counts = {};
+  rows.forEach(row => {
+    const id = normalizeEmployeeId_(row[ii]);
+    if (id) counts[id] = (counts[id] || 0) + 1;
+  });
+  const found = rows.filter(row => row[ni] && normalize_(row[ni]).includes(q))
+    .map(row => {
+      const id = String(row[ii] == null ? '' : row[ii]).trim();
+      const key = normalizeEmployeeId_(id);
+      return {name: String(row[ni]), employeeId: id, selectable: !!key && counts[key] === 1};
+    }).sort((a, b) => a.name.localeCompare(b.name) || a.employeeId.localeCompare(b.employeeId));
+  return {items: found.slice(0, 50), more: found.length > 50};
 }
 
 function normalizeEmployeeId_(value) {
