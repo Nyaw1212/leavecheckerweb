@@ -80,14 +80,13 @@ function finishSignIn_(p, config) {
 }
 
 /** Only an authorized, unexpired session may retrieve a matching employee's snapshot. */
-function lookupBalance(session, badge, name) {
+function lookupBalance(session, employeeId) {
   if (!/^[0-9a-f]{64}$/i.test(String(session || ''))) throw Error('Please sign in again.');
   const email = CacheService.getScriptCache().get('session:' + session);
   const config = config_();
   if (!email || !config.emails.includes(email)) throw Error('Please sign in again.');
-  badge = String(badge || '').trim();
-  name = normalize_(name);
-  if (!badge || !name || badge.length > 100 || name.length > 200) throw Error('Enter a badge number and full name.');
+  employeeId = String(employeeId || '').trim();
+  if (!employeeId || employeeId.length > 100) throw Error('Enter an employee number.');
   const sheet = SpreadsheetApp.openById(config.spreadsheet).getSheetByName(SHEET_NAME);
   if (!sheet) throw Error('The balance sheet is unavailable.');
   const data = sheet.getDataRange().getValues();
@@ -95,9 +94,9 @@ function lookupBalance(session, badge, name) {
   const headings = (data.shift() || []).map(x => String(x).trim().toLowerCase());
   const indexes = expected.map(x => headings.indexOf(x));
   if (indexes.some(i => i < 0)) throw Error('The balance sheet is not configured correctly.');
-  const idIndex = indexes[0], nameIndex = indexes[1];
-  const matches = data.filter(r => String(r[idIndex]).trim().toLowerCase() === badge.toLowerCase());
-  if (matches.length !== 1 || normalize_(matches[0][nameIndex]) !== name) return null;
+  const idIndex = indexes[0];
+  const matches = data.filter(r => String(r[idIndex]).trim().toLowerCase() === employeeId.toLowerCase());
+  if (matches.length !== 1) return null;
   const row = matches[0];
   const result = {};
   expected.forEach((key, i) => { const v = row[indexes[i]]; result[key] = v instanceof Date ? Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd') : (v === '' ? null : String(v)); });
