@@ -5,6 +5,7 @@ const SESSION_SECONDS = 1800;
 function doGet(e) {
   try {
     const config = config_();
+    if (config.anonymous) return page_('', '', '', true);
     if (e && e.parameter && e.parameter.error) return page_('', 'Sign-in was cancelled. Please try again.');
     if (e && e.parameter && e.parameter.code) {
       const session = finishSignIn_(e.parameter, config);
@@ -17,9 +18,10 @@ function doGet(e) {
   }
 }
 
-function page_(session, message, url) {
+function page_(session, message, url, anonymous) {
   const page = HtmlService.createTemplateFromFile('Index');
   page.initialSession = session || '';
+  page.anonymousMode = anonymous === true;
   page.initialMessage = message || '';
   page.signInUrl = url || '';
   page.appUrl = ScriptApp.getService().getUrl() || '';
@@ -30,12 +32,13 @@ function config_() {
   const p = PropertiesService.getScriptProperties();
   const config = {
     spreadsheet: p.getProperty('SPREADSHEET_ID'),
+    anonymous: p.getProperty('ALLOW_UNAUTHENTICATED') === 'true',
     client: p.getProperty('GOOGLE_CLIENT_ID'),
     secret: p.getProperty('GOOGLE_CLIENT_SECRET'),
     emails: (p.getProperty('ALLOWED_EMAILS') || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean),
     redirect: ScriptApp.getService().getUrl()
   };
-  if (!config.spreadsheet || !config.client || !config.secret || !config.emails.length || !config.redirect) throw Error('Missing configuration');
+  if (!config.spreadsheet || (!config.anonymous && (!config.client || !config.secret || !config.emails.length || !config.redirect))) throw Error('Missing configuration');
   return config;
 }
 
@@ -79,12 +82,14 @@ function finishSignIn_(p, config) {
   return session;
 }
 
-/** Only an authorized, unexpired session may retrieve a matching employee's snapshot. */
+/** Google sign-in is required unless the administrator enables unauthenticated access. */
 function lookupBalance(session, employeeId) {
-  if (!/^[0-9a-f]{64}$/i.test(String(session || ''))) throw Error('Please sign in again.');
-  const email = CacheService.getScriptCache().get('session:' + session);
   const config = config_();
-  if (!email || !config.emails.includes(email)) throw Error('Please sign in again.');
+  if (!config.anonymous) {
+    if (!/^[0-9a-f]{64}$/i.test(String(session || ''))) throw Error('Please sign in again.');
+    const email = CacheService.getScriptCache().get('session:' + session);
+    if (!email || !config.emails.includes(email)) throw Error('Please sign in again.');
+  }
   employeeId = String(employeeId || '').trim();
   if (!employeeId || employeeId.length > 100) throw Error('Enter an employee number.');
   const sheet = SpreadsheetApp.openById(config.spreadsheet).getSheetByName(SHEET_NAME);

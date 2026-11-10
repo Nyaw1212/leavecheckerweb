@@ -25,3 +25,7 @@ To update who can search, edit `ALLOWED_EMAILS`; an existing session is checked 
 ## Data publishing
 
 This repo does **not** calculate leave credits or automatically read the Windows desktop database. The desktop app must export or publish the selected month's computed VER2 balances into the Sheet. Until that publisher is implemented, populate it manually with reviewed data. A web lookup shows only the most recently published snapshot, not live calculations. Review identity matches and unavailable data before publishing.
+
+## Temporary unauthenticated access
+
+Set Script Property `ALLOW_UNAUTHENTICATED` to the exact value `true` to disable Google sign-in. Anyone who can reach the deployment can look up balances by employee number; employee IDs are not secrets. Use dummy data only. Set the property to `false` or delete it to restore sign-in. Do not remove existing OAuth configuration. The server checks this property for each lookup.
