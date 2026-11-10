@@ -91,7 +91,7 @@ function lookupBalance(session, employeeId) {
     if (!email || !config.emails.includes(email)) throw Error('Please sign in again.');
   }
   employeeId = String(employeeId || '').trim();
-  if (!employeeId || employeeId.length > 100) throw Error('Enter an employee number.');
+  if (!employeeId || employeeId.length > 100 || !normalizeEmployeeId_(employeeId)) throw Error('Enter an employee number.');
   const sheet = SpreadsheetApp.openById(config.spreadsheet).getSheetByName(SHEET_NAME);
   if (!sheet) throw Error('The balance sheet is unavailable.');
   const data = sheet.getDataRange().getValues();
@@ -100,13 +100,18 @@ function lookupBalance(session, employeeId) {
   const indexes = expected.map(x => headings.indexOf(x));
   if (indexes.some(i => i < 0)) throw Error('The balance sheet is not configured correctly.');
   const idIndex = indexes[0];
-  const matches = data.filter(r => String(r[idIndex]).trim().toLowerCase() === employeeId.toLowerCase());
+  const idKey = normalizeEmployeeId_(employeeId);
+  const matches = data.filter(r => normalizeEmployeeId_(r[idIndex]) === idKey);
   if (matches.length !== 1) return null;
   const row = matches[0];
   const result = {};
   expected.forEach((key, i) => { const v = row[indexes[i]]; result[key] = v instanceof Date ? Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd') : (v === '' ? null : String(v)); });
   result.name = result.name ? maskName_(result.name) : null;
   return result;
+}
+
+function normalizeEmployeeId_(value) {
+  return String(value == null ? '' : value).normalize('NFKC').replace(/[\s-]+/g, '').toLowerCase();
 }
 
 // Mask on the server so the browser never receives the unmasked personnel name.
