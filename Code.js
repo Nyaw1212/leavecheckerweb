@@ -5,7 +5,6 @@ const SESSION_SECONDS = 1800;
 function doGet(e) {
   try {
     const config = config_();
-    if (config.anonymous) return page_('', '', '', true);
     if (e && e.parameter && e.parameter.error) return page_('', 'Sign-in was cancelled. Please try again.');
     if (e && e.parameter && e.parameter.code) {
       const session = finishSignIn_(e.parameter, config);
@@ -32,7 +31,7 @@ function config_() {
   const p = PropertiesService.getScriptProperties();
   const config = {
     spreadsheet: p.getProperty('SPREADSHEET_ID'),
-    anonymous: p.getProperty('ALLOW_UNAUTHENTICATED') === 'true',
+    anonymous: false,
     client: p.getProperty('GOOGLE_CLIENT_ID'),
     secret: p.getProperty('GOOGLE_CLIENT_SECRET'),
     emails: (p.getProperty('ALLOWED_EMAILS') || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean),
@@ -82,7 +81,7 @@ function finishSignIn_(p, config) {
   return session;
 }
 
-/** Google sign-in is required unless the administrator enables unauthenticated access. */
+/** Access is restricted to signed-in, approved administrators. */
 function lookupBalance(session, employeeId) {
   const config = authorizedConfig_(session);
   employeeId = String(employeeId || '').trim();

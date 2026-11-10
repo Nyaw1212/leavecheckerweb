@@ -26,9 +26,6 @@ To update who can search, edit `ALLOWED_EMAILS`; an existing session is checked 
 
 This repo does **not** calculate leave credits or automatically read the Windows desktop database. The desktop app must export or publish the selected month's computed VER2 balances into the Sheet. Until that publisher is implemented, populate it manually with reviewed data. A web lookup shows only the most recently published snapshot, not live calculations. Review identity matches and unavailable data before publishing.
 
-## Temporary unauthenticated access
+## Administrator access
 
-Set Script Property `ALLOW_UNAUTHENTICATED` to the exact value `true` to disable Google sign-in. Anyone who can reach the deployment can look up balances by employee number; employee IDs are not secrets. Use dummy data only. Set the property to `false` or delete it to restore sign-in. Do not remove existing OAuth configuration. The server checks this property for each lookup.
-
-
-The personnel list returns all available names and employee IDs, then filters them in the browser. It follows the same sign-in setting as balance lookup. If unauthenticated access is enabled, anyone who can reach the app can search names and retrieve balances. Use test data only in that mode.
+All personnel names, employee IDs, and balances are available to approved administrators after Google sign-in. The former `ALLOW_UNAUTHENTICATED` property is ignored. Keep `ALLOWED_EMAILS` limited to approved administrators. The list contains all named rows in the published snapshot; missing or duplicate IDs cannot be selected for lookup.
