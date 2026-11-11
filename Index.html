@@ -64,11 +64,13 @@ input,button,.sign{font-size:1rem}
 .inline-mone .inline-status{font-size:.9rem;color:#ffce95;margin:8px 0 0}
 @media(max-width:900px){.inline-mone .mone-fields{grid-template-columns:repeat(2,minmax(120px,1fr))}}
 .table-mone-period{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:12px 0}.table-mone-period label{font-size:.9rem}.table-mone-period input{width:auto;margin-top:4px;padding:8px}.table-mone-period span{font-size:.8rem;color:#b9c6d4}.balance-table{min-width:1450px}.balance-table .mone-input{width:125px;min-width:90px;margin:0;padding:8px;font-size:1.4rem;text-align:right}.balance-table .mone-open{font-size:.9rem}.balance-table td.mone-input-cell{padding:8px 4px}.mone-recorded{display:block;color:#b9c6d4;font-size:.75rem;white-space:nowrap;margin-top:4px}
+.bulk-mone{margin:14px 0;border:1px solid #695d46;border-radius:10px;padding:12px;background:#182334}.bulk-mone summary{cursor:pointer;color:#dec285;font-weight:700;font-size:1rem}.bulk-mone textarea{box-sizing:border-box;width:100%;min-height:135px;padding:10px;background:#101621;color:#fff;border:1px solid #516175;border-radius:8px;font:1rem system-ui;resize:vertical}.bulk-mone select{background:#101621;color:#fff;border:1px solid #516175;border-radius:8px;padding:9px;font-size:1rem}.bulk-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.bulk-controls button{margin:0;padding:10px 14px}.bulk-output{overflow:auto;max-height:45vh;margin-top:10px}.bulk-output table{width:100%;border-collapse:collapse;font-size:1rem}.bulk-output th,.bulk-output td{padding:8px;border-bottom:1px solid #354052;text-align:right}.bulk-output th:first-child,.bulk-output td:first-child,.bulk-output th:last-child,.bulk-output td:last-child{text-align:left}.bulk-status{color:#ffce95;font-size:.9rem}
 [hidden]{display:none!important}
 .mone-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.mone-fields label{font-size:1rem}#moneStatus{color:#ffce95}@media(max-width:900px){.mone-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:500px){.mone-fields{grid-template-columns:1fr}}
 </style></head><body><main class="wrap"><div class="eyebrow">PERSONNEL SERVICES</div><h1>Leave Balance Lookup</h1><p>View the latest published leave balance for a personnel record.</p><p id="message" role="status"></p>
 <section id="signin" class="panel" hidden><h2>Authorized staff sign-in</h2><p>Sign in using your approved Google account to continue.</p><a id="auth" class="sign">Sign in with Google</a></section>
-<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><div class="table-mone-period"><label for="tableMoneStart">MONE start date<input type="date" id="tableMoneStart" value="2026-11-11"></label><label for="tableMoneEnd">MONE end date<input type="date" id="tableMoneEnd" value="2026-11-20"></label><span>MONE fields show the recorded total for these dates. Edit a value and save to adjust the balance; drafts stay in this browser.</span></div><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th><th scope="col">MONE VL</th><th scope="col">MONE SL</th><th scope="col">MONE</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
+<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><details class="bulk-mone"><summary>Multiple search &amp; preview MONE</summary><p class="muted">Paste one row per employee: surname, first name, middle name, amount (tab-separated, like Excel). Choose VL or SL. Amounts are the new MONE totals for the date range below; the preview does not save any changes.</p><label for="bulkMoneInput">Paste personnel rows</label><textarea id="bulkMoneInput" placeholder="Alea&#9;Grace&#9;Dautil&#9;10
+Rivera&#9;Charize Mae&#9;&#9;10"></textarea><div class="bulk-controls"><label for="bulkMoneLeave">Charge to <select id="bulkMoneLeave"><option value="">Choose VL or SL</option><option value="vl">VL</option><option value="sl">SL</option></select></label><button id="bulkMonePreview" type="button">Preview MONE</button><button id="bulkMoneClear" type="button" class="quiet">Show all names</button></div><p id="bulkMoneStatus" class="bulk-status" role="status" aria-live="polite"></p><div class="bulk-output"><table id="bulkMoneResults" hidden><thead><tr><th>Input name</th><th>Matched employee</th><th>Current VL</th><th>Current SL</th><th>MONE total</th><th>Preview VL</th><th>Preview SL</th><th>Status</th></tr></thead><tbody id="bulkMoneRows"></tbody></table></div></details><div class="table-mone-period"><label for="tableMoneStart">MONE start date<input type="date" id="tableMoneStart" value="2026-11-11"></label><label for="tableMoneEnd">MONE end date<input type="date" id="tableMoneEnd" value="2026-11-20"></label><span>MONE fields show the recorded total for these dates. Edit a value and save to adjust the balance; drafts stay in this browser.</span></div><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th><th scope="col">MONE VL</th><th scope="col">MONE SL</th><th scope="col">MONE</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
 <form id="moneForm" class="panel"><h3>Record MONE deduction</h3>
 <p>Deduct from the displayed web balances. Choose the MONE dates and enter the VL and/or SL deduction. The full amount is applied when saved; the snapshot date is unchanged.</p>
 <div class="mone-fields">
@@ -119,7 +121,7 @@ function restoreDetailDraft(id) {
 }
 function detailDraft() { return {startDate:document.getElementById('moneStart').value, endDate:document.getElementById('moneEnd').value, vl:document.getElementById('moneVl').value, sl:document.getElementById('moneSl').value, requestId:moneRequestId, expectedVl:moneExpectedVl, expectedSl:moneExpectedSl}; }
 document.getElementById('form').addEventListener('submit',e=>{e.preventDefault();const currentLookup=++lookupGeneration;const lookupId=document.getElementById('employeeId').value;activeBalanceId='';moneRequestId='';document.getElementById('moneStatus').textContent='';msg.textContent='Looking up balance…'; document.getElementById('result').hidden=true;document.getElementById('submit').disabled=true;google.script.run.withSuccessHandler(r=>{if(currentLookup!==lookupGeneration)return;document.getElementById('submit').disabled=false;if(!r){msg.textContent='No unique match found. Check the employee number, or contact personnel services.';return;}msg.textContent='';activeBalanceId=lookupId;restoreDetailDraft(lookupId);document.getElementById('employee').textContent=r.name;document.getElementById('period').textContent='AS OF '+(r.as_of||'unavailable');document.getElementById('updated').textContent='Snapshot updated: '+(r.updated_at||'unavailable');for(const key of ['vl','sl','fl','wl','spl'])document.getElementById(key).textContent=r[key]===null?'—':r[key];document.getElementById('selectPrompt').hidden=true;document.getElementById('result').hidden=false;}).withFailureHandler(()=>{if(currentLookup!==lookupGeneration)return;document.getElementById('submit').disabled=false;msg.textContent='Lookup unavailable or session expired. Sign in again or contact the administrator.';}).lookupBalance(session,lookupId)});
-let personnel = null, matches = [], rendered = 0, selectedPersonId = '';
+let personnel = null, matches = [], rendered = 0, selectedPersonId = '', bulkFilterIds = null;
 const LIST_BATCH = 100;
 const nameSearch = document.getElementById('nameSearch'), nameList = document.getElementById('nameList'), nameRows = document.getElementById('nameRows'), searchStatus = document.getElementById('searchStatus');
 function normalizedSearch(value) {
@@ -265,7 +267,7 @@ function addMoneCells(person, row) {
       totalClear(key); person.vl = result.vl; person.sl = result.sl;
       if (idKey(activeBalanceId) === idKey(person.employeeId)) { document.getElementById('vl').textContent = result.vl; document.getElementById('sl').textContent = result.sl; }
       msg.textContent = result.alreadyApplied ? 'MONE was already saved for ' + result.name + '.' : 'MONE totals saved for ' + result.name + '.';
-      loadRecordedMone();
+      markBulkStale(); loadRecordedMone();
     }).withFailureHandler(error => {
       button.disabled = discard.disabled = false; button.textContent = 'Retry save'; discard.hidden = false;
       msg.textContent = (error && error.message ? error.message : 'Could not confirm the update.') + ' Check MoneLog before clearing this draft.';
@@ -314,7 +316,7 @@ function appendPersonnelBatch() {
 function filterPersonnel() {
   if (!personnel) return;
   const query = normalizedSearch(nameSearch.value);
-  matches = personnel.filter(person => person.searchName.includes(query));
+  matches = personnel.filter(person => person.searchName.includes(query) && (!bulkFilterIds || bulkFilterIds.has(idKey(person.employeeId))));
   rendered = 0;
   nameRows.replaceChildren();
   nameList.scrollTop = 0;
@@ -322,7 +324,81 @@ function filterPersonnel() {
   appendPersonnelBatch();
   refreshAlphabet();
 }
-nameSearch.addEventListener('input', filterPersonnel);
+nameSearch.addEventListener('input', () => { bulkFilterIds = null; filterPersonnel(); });
+// The pasted amount replaces the selected period's existing MONE total; this
+// preview never writes to the sheet or to a row's draft.
+function bulkWords(value) {
+  return String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
+}
+function parseBulkMone(value) {
+  return String(value || '').split(/\r?\n/).filter(line => line.trim()).map((line, index) => {
+    const cells = line.split('\t').map(value => value.trim());
+    const [surname = '', given = '', middle = '', amount = ''] = cells;
+    const valid = cells.length === 4 && !!surname && !!given && /^(?:\d+)(?:\.\d{1,3})?$/.test(amount) && Number(amount) <= 100000;
+    return {line:index + 1, surname, given, middle, amount, valid, display:[surname, [given, middle].filter(Boolean).join(' ')].filter(Boolean).join(', ')};
+  });
+}
+function bulkCandidates(entry, people) {
+  const surname = bulkWords(entry.surname), given = bulkWords(entry.given), middle = bulkWords(entry.middle);
+  return people.filter(person => {
+    const pieces = String(person.name || '').split(',');
+    if (pieces.length !== 2 || bulkWords(pieces[0]) !== surname) return false;
+    const fullGiven = bulkWords(pieces[1]), expected = [given, middle].filter(Boolean).join(' ');
+    return middle ? fullGiven === expected : (fullGiven === given || fullGiven.startsWith(given + ' '));
+  });
+}
+function createBulkPreview(entries, people, totals, category) {
+  const results = entries.map(entry => {
+    if (!entry.valid) return {entry, status:'Invalid row: use four tab-separated columns and a valid amount.'};
+    const found = bulkCandidates(entry, people);
+    if (!found.length) return {entry, status:'No exact name match; review spelling.'};
+    if (found.length !== 1) return {entry, status:'Multiple name matches; review manually.'};
+    const person = found[0];
+    if (!person.selectable || !idKey(person.employeeId)) return {entry, person, status:'Employee number missing or duplicated; review.'};
+    const vl = Number(person.vl), sl = Number(person.sl);
+    if (person.vl == null || person.vl === '' || person.sl == null || person.sl === '' || !Number.isFinite(vl) || !Number.isFinite(sl)) return {entry, person, status:'VL or SL balance unavailable; review.'};
+    const old = totals[idKey(person.employeeId)] || {vl:0, sl:0};
+    const previous = Number(old[category]), target = Number(entry.amount);
+    if (!Number.isFinite(previous)) return {entry, person, status:'Recorded MONE total unavailable; review.'};
+    const result = Math.round((Number(person[category]) + previous - target) * 1000) / 1000;
+    const projected = {vl, sl}; projected[category] = result;
+    return {entry, person, projected, status: result < 0 ? 'Insufficient ' + category.toUpperCase() + ' balance; review.' : 'Preview only'};
+  });
+  const counts = new Map();
+  results.forEach(row => { if (row.person && row.person.selectable) { const key = idKey(row.person.employeeId); counts.set(key, (counts.get(key) || 0) + 1); } });
+  results.forEach(row => { if (row.person && counts.get(idKey(row.person.employeeId)) > 1) { row.projected = null; row.status = 'Employee appears more than once; review.'; } });
+  return results;
+}
+const bulkInput = document.getElementById('bulkMoneInput'), bulkLeave = document.getElementById('bulkMoneLeave');
+const bulkStatus = document.getElementById('bulkMoneStatus'), bulkRows = document.getElementById('bulkMoneRows'), bulkResults = document.getElementById('bulkMoneResults');
+let bulkHasPreview = false;
+function markBulkStale() { if (bulkHasPreview) bulkStatus.textContent = 'Values may have changed. Click Preview MONE again to refresh this preview.'; }
+bulkInput.addEventListener('input', markBulkStale); bulkLeave.addEventListener('change', markBulkStale);
+tableMoneStart.addEventListener('change', markBulkStale); tableMoneEnd.addEventListener('change', markBulkStale);
+document.getElementById('bulkMonePreview').addEventListener('click', () => {
+  if (!personnel) { bulkStatus.textContent = 'Personnel are still loading.'; return; }
+  if (recordedStatus !== 'ready') { bulkStatus.textContent = 'MONE totals are unavailable. Select valid dates and wait for totals to load.'; return; }
+  if (!bulkLeave.value) { bulkStatus.textContent = 'Choose whether to charge VL or SL.'; return; }
+  const entries = parseBulkMone(bulkInput.value);
+  if (!entries.length || entries.length > 500) { bulkStatus.textContent = 'Paste 1 to 500 rows.'; return; }
+  const results = createBulkPreview(entries, personnel, recordedMone, bulkLeave.value);
+  bulkRows.replaceChildren();
+  const ids = new Set();
+  results.forEach(row => {
+    const tr = document.createElement('tr');
+    if (row.person && row.person.selectable) ids.add(idKey(row.person.employeeId));
+    const vals = [row.entry.display || 'Row ' + row.entry.line, row.person ? row.person.name : '—',
+      row.person && row.person.vl != null && row.person.vl !== '' ? row.person.vl : '—',
+      row.person && row.person.sl != null && row.person.sl !== '' ? row.person.sl : '—', row.entry.amount || '—',
+      row.projected ? row.projected.vl : '—', row.projected ? row.projected.sl : '—', row.status];
+    vals.forEach(value => { const td = document.createElement('td'); td.textContent = String(value); tr.appendChild(td); });
+    bulkRows.appendChild(tr);
+  });
+  bulkHasPreview = true; bulkResults.hidden = false; bulkFilterIds = ids; nameSearch.value = ''; filterPersonnel();
+  const review = results.filter(row => row.status !== 'Preview only').length;
+  bulkStatus.textContent = results.length + ' rows · ' + review + ' need review · ' + bulkLeave.value.toUpperCase() + ' · ' + tableMoneStart.value + ' to ' + tableMoneEnd.value + '. No changes saved.';
+});
+document.getElementById('bulkMoneClear').addEventListener('click', () => { bulkFilterIds = null; filterPersonnel(); bulkStatus.textContent = 'Showing all names. Preview results remain above.'; });
 nameList.addEventListener('scroll', () => {
   if (rendered < matches.length && nameList.scrollTop + nameList.clientHeight >= nameList.scrollHeight - 150) appendPersonnelBatch();
 });
