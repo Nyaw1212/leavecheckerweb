@@ -69,8 +69,8 @@ input,button,.sign{font-size:1rem}
 .mone-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.mone-fields label{font-size:1rem}#moneStatus{color:#ffce95}@media(max-width:900px){.mone-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:500px){.mone-fields{grid-template-columns:1fr}}
 </style></head><body><main class="wrap"><div class="eyebrow">PERSONNEL SERVICES</div><h1>Leave Balance Lookup</h1><p>View the latest published leave balance for a personnel record.</p><p id="message" role="status"></p>
 <section id="signin" class="panel" hidden><h2>Authorized staff sign-in</h2><p>Sign in using your approved Google account to continue.</p><a id="auth" class="sign">Sign in with Google</a></section>
-<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><details class="bulk-mone"><summary>Multiple search &amp; preview MONE</summary><p class="muted">Paste one row per employee: surname, first name, middle name, amount (tab-separated, like Excel). Choose VL or SL. Amounts are the new MONE totals for the date range below; the preview does not save any changes.</p><label for="bulkMoneInput">Paste personnel rows</label><textarea id="bulkMoneInput" placeholder="Alea&#9;Grace&#9;Dautil&#9;10
-Rivera&#9;Charize Mae&#9;&#9;10"></textarea><div class="bulk-controls"><label for="bulkMoneLeave">Charge to <select id="bulkMoneLeave"><option value="">Choose VL or SL</option><option value="vl">VL</option><option value="sl">SL</option></select></label><button id="bulkMonePreview" type="button">Preview MONE</button><button id="bulkMoneClear" type="button" class="quiet">Show all names</button></div><p id="bulkMoneStatus" class="bulk-status" role="status" aria-live="polite"></p><div class="bulk-output"><table id="bulkMoneResults" hidden><thead><tr><th>Input name</th><th>Matched employee</th><th>Current VL</th><th>Current SL</th><th>MONE total</th><th>Preview VL</th><th>Preview SL</th><th>Status</th></tr></thead><tbody id="bulkMoneRows"></tbody></table></div></details><div class="table-mone-period"><label for="tableMoneStart">MONE start date<input type="date" id="tableMoneStart" value="2026-11-11"></label><label for="tableMoneEnd">MONE end date<input type="date" id="tableMoneEnd" value="2026-11-20"></label><span>MONE fields show the recorded total for these dates. Edit a value and save to adjust the balance; drafts stay in this browser.</span></div><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th><th scope="col">MONE VL</th><th scope="col">MONE SL</th><th scope="col">MONE</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
+<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><details class="bulk-mone"><summary>Multiple search &amp; preview MONE</summary><p class="muted">Paste one row per employee: surname, first name, middle name, amount (tab-separated, like Excel). The amount is the requested MONE total for the date range below. The preview keeps 5 VL and 5 SL, allocates SL first, and uses increments of 5. It does not save any changes.</p><label for="bulkMoneInput">Paste personnel rows</label><textarea id="bulkMoneInput" placeholder="Alea&#9;Grace&#9;Dautil&#9;10
+Rivera&#9;Charize Mae&#9;&#9;10"></textarea><div class="bulk-controls"><button id="bulkMonePreview" type="button">Preview MONE</button><button id="bulkMoneClear" type="button" class="quiet">Show all names</button></div><p id="bulkMoneStatus" class="bulk-status" role="status" aria-live="polite"></p><div class="bulk-output"><table id="bulkMoneResults" hidden><thead><tr><th>Input name</th><th>Matched employee</th><th>Current VL</th><th>Current SL</th><th>Requested</th><th>MONE VL</th><th>MONE SL</th><th>Preview VL</th><th>Preview SL</th><th>Status</th></tr></thead><tbody id="bulkMoneRows"></tbody></table></div></details><div class="table-mone-period"><label for="tableMoneStart">MONE start date<input type="date" id="tableMoneStart" value="2026-11-11"></label><label for="tableMoneEnd">MONE end date<input type="date" id="tableMoneEnd" value="2026-11-20"></label><span>MONE fields show the recorded total for these dates. Edit a value and save to adjust the balance; drafts stay in this browser.</span></div><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th><th scope="col">MONE VL</th><th scope="col">MONE SL</th><th scope="col">MONE</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
 <form id="moneForm" class="panel"><h3>Record MONE deduction</h3>
 <p>Deduct from the displayed web balances. Choose the MONE dates and enter the VL and/or SL deduction. The full amount is applied when saved; the snapshot date is unchanged.</p>
 <div class="mone-fields">
@@ -347,7 +347,15 @@ function bulkCandidates(entry, people) {
     return middle ? fullGiven === expected : (fullGiven === given || fullGiven.startsWith(given + ' '));
   });
 }
-function createBulkPreview(entries, people, totals, category) {
+// Match the desktop suggest_mone_credits rule using thousandths for precision.
+function suggestBulkMone(vl, sl, requested) {
+  const usable = value => Math.floor(Math.max(0, Math.round(value * 1000) - 5000) / 5000) * 5;
+  const usableVl = usable(vl), usableSl = usable(sl);
+  const target = Math.floor(Math.min(requested, usableVl + usableSl) / 5) * 5;
+  const moneSl = Math.min(usableSl, target), moneVl = Math.min(usableVl, Math.max(0, target - moneSl));
+  return {target, moneVl, moneSl};
+}
+function createBulkPreview(entries, people, totals) {
   const results = entries.map(entry => {
     if (!entry.valid) return {entry, status:'Invalid row: use four tab-separated columns and a valid amount.'};
     const found = bulkCandidates(entry, people);
@@ -358,30 +366,36 @@ function createBulkPreview(entries, people, totals, category) {
     const vl = Number(person.vl), sl = Number(person.sl);
     if (person.vl == null || person.vl === '' || person.sl == null || person.sl === '' || !Number.isFinite(vl) || !Number.isFinite(sl)) return {entry, person, status:'VL or SL balance unavailable; review.'};
     const old = totals[idKey(person.employeeId)] || {vl:0, sl:0};
-    const previous = Number(old[category]), target = Number(entry.amount);
-    if (!Number.isFinite(previous)) return {entry, person, status:'Recorded MONE total unavailable; review.'};
-    const result = Math.round((Number(person[category]) + previous - target) * 1000) / 1000;
-    const projected = {vl, sl}; projected[category] = result;
-    return {entry, person, projected, status: result < 0 ? 'Insufficient ' + category.toUpperCase() + ' balance; review.' : 'Preview only'};
+    const previousVl = Number(old.vl), previousSl = Number(old.sl);
+    if (!Number.isFinite(previousVl) || !Number.isFinite(previousSl) || previousVl < 0 || previousSl < 0) return {entry, person, status:'Recorded MONE total unavailable; review.'};
+    // Current balances already reflect the selected period's saved MONE. Restore it
+    // for the suggestion, then apply the new totals once.
+    const baseVl = Math.round((vl + previousVl) * 1000) / 1000;
+    const baseSl = Math.round((sl + previousSl) * 1000) / 1000;
+    const suggestion = suggestBulkMone(baseVl, baseSl, Number(entry.amount));
+    const projected = {vl:Math.round((baseVl - suggestion.moneVl) * 1000) / 1000,
+                       sl:Math.round((baseSl - suggestion.moneSl) * 1000) / 1000};
+    const limited = suggestion.target < Number(entry.amount);
+    const status = baseVl < 5 || baseSl < 5 ? 'Balance already below 5; review.' : limited ? 'Reduced: requested ' + entry.amount + ', eligible ' + suggestion.target + '; review.' : 'Preview only';
+    return {entry, person, projected, suggestion, status};
   });
   const counts = new Map();
   results.forEach(row => { if (row.person && row.person.selectable) { const key = idKey(row.person.employeeId); counts.set(key, (counts.get(key) || 0) + 1); } });
   results.forEach(row => { if (row.person && counts.get(idKey(row.person.employeeId)) > 1) { row.projected = null; row.status = 'Employee appears more than once; review.'; } });
   return results;
 }
-const bulkInput = document.getElementById('bulkMoneInput'), bulkLeave = document.getElementById('bulkMoneLeave');
+const bulkInput = document.getElementById('bulkMoneInput');
 const bulkStatus = document.getElementById('bulkMoneStatus'), bulkRows = document.getElementById('bulkMoneRows'), bulkResults = document.getElementById('bulkMoneResults');
 let bulkHasPreview = false;
 function markBulkStale() { if (bulkHasPreview) bulkStatus.textContent = 'Values may have changed. Click Preview MONE again to refresh this preview.'; }
-bulkInput.addEventListener('input', markBulkStale); bulkLeave.addEventListener('change', markBulkStale);
+bulkInput.addEventListener('input', markBulkStale);
 tableMoneStart.addEventListener('change', markBulkStale); tableMoneEnd.addEventListener('change', markBulkStale);
 document.getElementById('bulkMonePreview').addEventListener('click', () => {
   if (!personnel) { bulkStatus.textContent = 'Personnel are still loading.'; return; }
   if (recordedStatus !== 'ready') { bulkStatus.textContent = 'MONE totals are unavailable. Select valid dates and wait for totals to load.'; return; }
-  if (!bulkLeave.value) { bulkStatus.textContent = 'Choose whether to charge VL or SL.'; return; }
   const entries = parseBulkMone(bulkInput.value);
   if (!entries.length || entries.length > 500) { bulkStatus.textContent = 'Paste 1 to 500 rows.'; return; }
-  const results = createBulkPreview(entries, personnel, recordedMone, bulkLeave.value);
+  const results = createBulkPreview(entries, personnel, recordedMone);
   bulkRows.replaceChildren();
   const ids = new Set();
   results.forEach(row => {
@@ -390,13 +404,14 @@ document.getElementById('bulkMonePreview').addEventListener('click', () => {
     const vals = [row.entry.display || 'Row ' + row.entry.line, row.person ? row.person.name : '—',
       row.person && row.person.vl != null && row.person.vl !== '' ? row.person.vl : '—',
       row.person && row.person.sl != null && row.person.sl !== '' ? row.person.sl : '—', row.entry.amount || '—',
+      row.suggestion && row.projected ? row.suggestion.moneVl : '—', row.suggestion && row.projected ? row.suggestion.moneSl : '—',
       row.projected ? row.projected.vl : '—', row.projected ? row.projected.sl : '—', row.status];
     vals.forEach(value => { const td = document.createElement('td'); td.textContent = String(value); tr.appendChild(td); });
     bulkRows.appendChild(tr);
   });
   bulkHasPreview = true; bulkResults.hidden = false; bulkFilterIds = ids; nameSearch.value = ''; filterPersonnel();
   const review = results.filter(row => row.status !== 'Preview only').length;
-  bulkStatus.textContent = results.length + ' rows · ' + review + ' need review · ' + bulkLeave.value.toUpperCase() + ' · ' + tableMoneStart.value + ' to ' + tableMoneEnd.value + '. No changes saved.';
+  bulkStatus.textContent = results.length + ' rows · ' + review + ' need review · ' + tableMoneStart.value + ' to ' + tableMoneEnd.value + '. SL first; 5 VL and 5 SL protected. No changes saved.';
 });
 document.getElementById('bulkMoneClear').addEventListener('click', () => { bulkFilterIds = null; filterPersonnel(); bulkStatus.textContent = 'Showing all names. Preview results remain above.'; });
 nameList.addEventListener('scroll', () => {
