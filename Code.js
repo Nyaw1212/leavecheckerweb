@@ -152,3 +152,102 @@ function normalizeEmployeeId_(value) {
 
 function normalize_(v) { return String(v || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase(); }
 function signOut(session) { if (/^[0-9a-f]{64}$/i.test(String(session || ''))) CacheService.getScriptCache().remove('session:' + session); }
+
+// Writes are protected separately because anonymous browsing may be enabled.
+function applyMone(session, input) {
+  const config = authorizedConfig_(session);
+  input = input || {};
+  const pin = PropertiesService.getScriptProperties().getProperty('MONE_ADMIN_PIN') || '';
+  if (pin.length < 6) throw Error('MONE entry is not configured. Set MONE_ADMIN_PIN in Script Properties.');
+  const id = normalizeEmployeeId_(input.employeeId);
+  const requestId = String(input.requestId || '');
+  const year = Number(input.year), month = Number(input.month);
+  function amount(value) {
+    if (value === '' || value === null || value === undefined) return 0;
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 0 || n > 100000 || Math.abs(n * 1000 - Math.round(n * 1000)) > 1e-6) throw Error('Enter nonnegative amounts with at most three decimal places.');
+    return Math.round(n * 1000);
+  }
+  const vlDeduction = amount(input.vl), slDeduction = amount(input.sl);
+  if (!id || id.length > 100 || !/^[a-zA-Z0-9-]{16,80}$/.test(requestId) ||
+      !Number.isInteger(year) || year < 1900 || year > 2100 ||
+      !Number.isInteger(month) || month < 1 || month > 12 || (!vlDeduction && !slDeduction)) {
+    throw Error('Select an employee and enter a valid month, year and MONE amount.');
+  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const cache = CacheService.getScriptCache();
+    if (cache.get('mone-pin-locked')) throw Error('MONE entry is temporarily locked after incorrect PIN attempts. Try again later.');
+    if (String(input.pin || '') !== pin) {
+      const attempts = Number(cache.get('mone-pin-attempts') || 0) + 1;
+      if (attempts >= 5) {
+        cache.put('mone-pin-locked', '1', 600);
+        cache.remove('mone-pin-attempts');
+      } else cache.put('mone-pin-attempts', String(attempts), 600);
+      throw Error('Incorrect MONE PIN.');
+    }
+    cache.remove('mone-pin-attempts');
+    const book = SpreadsheetApp.openById(config.spreadsheet);
+    const sheet = book.getSheetByName(SHEET_NAME);
+    if (!sheet) throw Error('The balance sheet is unavailable.');
+    const rows = sheet.getDataRange().getValues();
+    const headers = (rows.shift() || []).map(x => String(x).trim().toLowerCase());
+    const idIndex = headers.indexOf('employee_id'), nameIndex = headers.indexOf('name');
+    const vlIndex = headers.indexOf('vl'), slIndex = headers.indexOf('sl'), asOfIndex = headers.indexOf('as_of');
+    if ([idIndex, nameIndex, vlIndex, slIndex, asOfIndex].some(i => i < 0) || Math.abs(vlIndex - slIndex) !== 1) throw Error('The balance sheet must contain employee_id, name, as_of, and adjacent VL/SL columns.');
+    const matches = rows.map((row, index) => ({row, index})).filter(x => normalizeEmployeeId_(x.row[idIndex]) === id);
+    if (matches.length !== 1) throw Error('Employee number is missing or duplicated.');
+    let log = book.getSheetByName('MoneLog');
+    const logHeaders = ['request_id','employee_id','name','month','year','vl_deducted','sl_deducted','vl_before','sl_before','vl_after','sl_after','recorded_at','status'];
+    if (!log) {
+      log = book.insertSheet('MoneLog');
+      log.getRange(1, 1, 1, logHeaders.length).setValues([logHeaders]);
+    }
+    const logRows = log.getDataRange().getValues();
+    if (logHeaders.some((h, i) => String((logRows[0] || [])[i] || '').trim() !== h)) throw Error('MoneLog headers do not match the expected format.');
+    const previous = logRows.slice(1).find(row => String(row[0]) === requestId);
+    if (previous) {
+      if (normalizeEmployeeId_(previous[1]) !== id || Number(previous[3]) !== month || Number(previous[4]) !== year ||
+          Math.round(Number(previous[5]) * 1000) !== vlDeduction || Math.round(Number(previous[6]) * 1000) !== slDeduction)
+        throw Error('This request ID has different details. Review the log before retrying.');
+      if (previous[12] !== 'APPLIED') throw Error('This MONE entry is pending. Check MoneLog and balances before retrying.');
+      return {name: String(matches[0].row[nameIndex]), vl: String(matches[0].row[vlIndex]), sl: String(matches[0].row[slIndex]), alreadyApplied: true};
+    }
+    if (logRows.slice(1).some(row => normalizeEmployeeId_(row[1]) === id && String(row[12]) === 'PENDING'))
+      throw Error('This employee has a pending MONE entry. Check MoneLog and balances before recording another.');
+    function balance(value, label) {
+      if (value === '' || value === null || value === undefined || !Number.isFinite(Number(value))) throw Error(label + ' balance is unavailable. Review it before recording MONE.');
+      return Math.round(Number(value) * 1000);
+    }
+    const match = matches[0], vlBefore = balance(match.row[vlIndex], 'VL'), slBefore = balance(match.row[slIndex], 'SL');
+    const asOfValue = match.row[asOfIndex];
+    const asOf = asOfValue instanceof Date ? Utilities.formatDate(asOfValue, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(asOfValue || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf) || year * 100 + month > Number(asOf.slice(0, 4)) * 100 + Number(asOf.slice(5, 7)))
+      throw Error('MONE month must not be later than the snapshot month. Export a newer balance first.');
+    if (amount(input.expectedVl) !== vlBefore || amount(input.expectedSl) !== slBefore)
+      throw Error('The balance changed since it was displayed. Reload the employee and review it again.');
+    if (vlDeduction > vlBefore || slDeduction > slBefore) throw Error('A MONE deduction exceeds the available balance.');
+    const rowNumber = match.index + 2, startCol = Math.min(vlIndex, slIndex) + 1;
+    const range = sheet.getRange(rowNumber, startCol, 1, 2);
+    if (range.getFormulas()[0].some(Boolean)) throw Error('VL or SL is a formula. Review the sheet before recording MONE.');
+    const after = [0, 0];
+    after[vlIndex - (startCol - 1)] = (vlBefore - vlDeduction) / 1000;
+    after[slIndex - (startCol - 1)] = (slBefore - slDeduction) / 1000;
+    const logRow = log.getLastRow() + 1;
+    log.getRange(logRow, 1, 1, logHeaders.length).setValues([[
+      requestId, String(match.row[idIndex]), String(match.row[nameIndex]), month, year,
+      vlDeduction / 1000, slDeduction / 1000, vlBefore / 1000, slBefore / 1000,
+      after[vlIndex - (startCol - 1)], after[slIndex - (startCol - 1)], new Date(), 'PENDING'
+    ]]);
+    SpreadsheetApp.flush();
+    range.setValues([after]);
+    SpreadsheetApp.flush();
+    log.getRange(logRow, 13).setValue('APPLIED');
+    SpreadsheetApp.flush();
+    return {name: String(match.row[nameIndex]), vl: String(after[vlIndex - (startCol - 1)]), sl: String(after[slIndex - (startCol - 1)]), alreadyApplied: false};
+  } finally {
+    lock.releaseLock();
+  }
+}
+

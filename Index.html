@@ -51,9 +51,19 @@ input,button,.sign{font-size:1rem}
 .prefix-close{float:right;background:transparent;color:#fff;padding:2px 6px}
 @media(max-width:900px){.alphabet-letters{max-height:45vh}.alphabet-index{flex-basis:38px}}
 [hidden]{display:none!important}
+.mone-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.mone-fields label{font-size:1rem}#moneStatus{color:#ffce95}@media(max-width:900px){.mone-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:500px){.mone-fields{grid-template-columns:1fr}}
 </style></head><body><main class="wrap"><div class="eyebrow">PERSONNEL SERVICES</div><h1>Leave Balance Lookup</h1><p>View the latest published leave balance for a personnel record.</p><p id="message" role="status"></p>
 <section id="signin" class="panel" hidden><h2>Authorized staff sign-in</h2><p>Sign in using your approved Google account to continue.</p><a id="auth" class="sign">Sign in with Google</a></section>
-<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p></section>
+<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
+<form id="moneForm" class="panel"><h3>Record MONE deduction</h3>
+<p>Deduct from the displayed web balances. Choose the month and year, then enter the amount for VL and/or SL. The month and year are recorded; the snapshot date is unchanged.</p>
+<div class="mone-fields">
+<label>Month and year<input id="moneMonth" type="month" required></label>
+<label>VL to deduct<input id="moneVl" type="number" min="0" step="0.001" value="0" required></label>
+<label>SL to deduct<input id="moneSl" type="number" min="0" step="0.001" value="0" required></label>
+<label>Admin PIN<input id="monePin" type="password" autocomplete="off" required></label>
+</div><button id="moneSubmit" type="submit">Record MONE</button><p id="moneStatus" role="status" aria-live="polite"></p>
+<p class="muted">A later VER2 upload can replace these web balances. MONE entries remain in the sheet log.</p></form></section>
 </div></div></main>
 <script>
 const anonymousMode = <?!= JSON.stringify(anonymousMode) ?>;
@@ -65,8 +75,8 @@ msg.textContent = <?!= JSON.stringify(initialMessage).replace(/</g, '\\u003c') ?
 document.getElementById('signin').hidden=anonymousMode || !!session; document.getElementById('workspace').hidden=!(anonymousMode || session);
 document.getElementById('logout').hidden=anonymousMode;
 if(authUrl) document.getElementById('auth').href=authUrl; else document.getElementById('auth').href=appUrl;
-let lookupGeneration = 0;
-document.getElementById('form').addEventListener('submit',e=>{e.preventDefault();const currentLookup=++lookupGeneration;msg.textContent='Looking up balance…'; document.getElementById('result').hidden=true;document.getElementById('submit').disabled=true;google.script.run.withSuccessHandler(r=>{if(currentLookup!==lookupGeneration)return;document.getElementById('submit').disabled=false;if(!r){msg.textContent='No unique match found. Check the employee number, or contact personnel services.';return;}msg.textContent='';document.getElementById('employee').textContent=r.name;document.getElementById('period').textContent='AS OF '+(r.as_of||'unavailable');document.getElementById('updated').textContent='Snapshot updated: '+(r.updated_at||'unavailable');for(const key of ['vl','sl','fl','wl','spl'])document.getElementById(key).textContent=r[key]===null?'—':r[key];document.getElementById('selectPrompt').hidden=true;document.getElementById('result').hidden=false;}).withFailureHandler(()=>{if(currentLookup!==lookupGeneration)return;document.getElementById('submit').disabled=false;msg.textContent='Lookup unavailable or session expired. Sign in again or contact the administrator.';}).lookupBalance(session,document.getElementById('employeeId').value)});
+let lookupGeneration = 0, activeBalanceId = '', moneRequestId = '';
+document.getElementById('form').addEventListener('submit',e=>{e.preventDefault();const currentLookup=++lookupGeneration;const lookupId=document.getElementById('employeeId').value;activeBalanceId='';moneRequestId='';document.getElementById('moneStatus').textContent='';msg.textContent='Looking up balance…'; document.getElementById('result').hidden=true;document.getElementById('submit').disabled=true;google.script.run.withSuccessHandler(r=>{if(currentLookup!==lookupGeneration)return;document.getElementById('submit').disabled=false;if(!r){msg.textContent='No unique match found. Check the employee number, or contact personnel services.';return;}msg.textContent='';activeBalanceId=lookupId;document.getElementById('employee').textContent=r.name;document.getElementById('period').textContent='AS OF '+(r.as_of||'unavailable');document.getElementById('updated').textContent='Snapshot updated: '+(r.updated_at||'unavailable');for(const key of ['vl','sl','fl','wl','spl'])document.getElementById(key).textContent=r[key]===null?'—':r[key];document.getElementById('selectPrompt').hidden=true;document.getElementById('result').hidden=false;}).withFailureHandler(()=>{if(currentLookup!==lookupGeneration)return;document.getElementById('submit').disabled=false;msg.textContent='Lookup unavailable or session expired. Sign in again or contact the administrator.';}).lookupBalance(session,lookupId)});
 let personnel = null, matches = [], rendered = 0, selectedPersonId = '';
 const LIST_BATCH = 100;
 const nameSearch = document.getElementById('nameSearch'), nameList = document.getElementById('nameList'), nameRows = document.getElementById('nameRows'), searchStatus = document.getElementById('searchStatus');
@@ -197,5 +207,40 @@ if (anonymousMode || session) {
     searchStatus.textContent = 'Could not load personnel. Sign in again or contact the administrator.';
   }).searchPersonnel(session, '');
 }
+
+const moneForm = document.getElementById('moneForm'), moneStatus = document.getElementById('moneStatus');
+moneForm.addEventListener('input', event => { if (event.target.id !== 'monePin') moneRequestId = ''; });
+moneForm.addEventListener('submit', event => {
+  event.preventDefault();
+  if (!activeBalanceId) { moneStatus.textContent = 'Select an employee first.'; return; }
+  const period = document.getElementById('moneMonth').value.split('-');
+  const vl = document.getElementById('moneVl').value, sl = document.getElementById('moneSl').value;
+  if (!Number(vl) && !Number(sl)) { moneStatus.textContent = 'Enter a VL or SL deduction.'; return; }
+  if (!window.confirm('Record MONE for ' + document.getElementById('employee').textContent + '?\n\nVL deduction: ' + vl + '\nSL deduction: ' + sl + '\nMonth: ' + period.join('-'))) return;
+  if (!moneRequestId) moneRequestId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
+  const subjectId = activeBalanceId, lookupVersion = lookupGeneration;
+  const input = {employeeId:activeBalanceId,requestId:moneRequestId,year:Number(period[0]),month:Number(period[1]),vl,sl,expectedVl:document.getElementById('vl').textContent,expectedSl:document.getElementById('sl').textContent,pin:document.getElementById('monePin').value};
+  const button = document.getElementById('moneSubmit'); button.disabled = true;
+  moneStatus.textContent = 'Recording MONE…';
+  google.script.run.withSuccessHandler(result => {
+    button.disabled = false;
+    document.getElementById('monePin').value = '';
+    if (lookupVersion === lookupGeneration && subjectId === activeBalanceId) {
+      document.getElementById('vl').textContent = result.vl;
+      document.getElementById('sl').textContent = result.sl;
+      moneStatus.textContent = result.alreadyApplied ? 'This MONE entry was already recorded.' : 'MONE recorded. The web balance and MoneLog were updated.';
+    } else {
+      msg.textContent = 'MONE recorded for ' + result.name + '.';
+    }
+    google.script.run.withSuccessHandler(result => {
+      personnel = result.items.map(person => ({...person, searchName: normalizedSearch(person.name)}));
+      filterPersonnel();
+    }).withFailureHandler(() => { searchStatus.textContent = 'Balance changed; reload the page to refresh the table.'; }).searchPersonnel(session, '');
+  }).withFailureHandler(error => {
+    button.disabled = false;
+    moneStatus.textContent = (error && error.message ? error.message : 'Could not confirm the update.') + ' Check MoneLog before making a new request.';
+  }).applyMone(session, input);
+});
 document.getElementById('logout').addEventListener('click',()=>{google.script.run.signOut(session);session='';document.getElementById('result').hidden=true;document.getElementById('workspace').hidden=true;document.getElementById('signin').hidden=false;window.top.location.href=appUrl});
 </script></body></html>
+
