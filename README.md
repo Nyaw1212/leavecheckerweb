@@ -1,12 +1,12 @@
 # Leave Checker Web
 
-Read-only Apps Script lookup for the VER2 Leave Balance snapshot. An approved staff member signs in with Google, then enters an employee number. It displays VL, SL, FL, WL, SPL and the snapshot's date; empty values are unavailable, not zero.
+Read-only Apps Script lookup for the VER2 Leave Balance snapshot. The app currently opens without Google sign-in and lets visitors browse names and search balances. It displays VL, SL, FL, WL, SPL and the snapshot's date; empty values are unavailable, not zero.
 
 **Status: deployed test reported a missing Sheets permission; the current deployment and access must be verified. Desktop data is not automatically connected. Test with sample data before publishing personnel records.**
 
 ## Private data
 
-This is a public source-code repository. Never commit names, balances, a spreadsheet ID, credentials, allowed staff emails, or a `.clasp.json` associated with a private project. The script owner keeps the balance Sheet private; do not share it with web-app viewers. Only staff listed in server-side Script Properties may query records. The employee number is a lookup input, not authentication; any approved account can look up any employee number. Duplicate employee IDs are rejected. There is no endpoint returning the full sheet.
+This is a public source-code repository. Never commit names, balances, a spreadsheet ID, credentials, allowed staff emails, or a `.clasp.json` associated with a private project. The script owner keeps the balance Sheet private; do not share it with web-app viewers. Anyone who can reach the deployed web app can search names and look up balances. The employee number is a lookup input, not authentication. Duplicate employee IDs are rejected. There is no endpoint returning the full sheet.
 
 ## Setup overview
 
@@ -14,18 +14,17 @@ This is a public source-code repository. Never commit names, balances, a spreads
 
    `employee_id | name | as_of | vl | sl | fl | wl | spl | updated_at`
 
-   Store employee IDs as **plain text** to preserve leading zeros. Use actual calculated month-end VER2 values. Leave missing balances empty; use zero only for an actual zero. Use ISO dates such as `2026-11-30` and record when the snapshot was published. Each ID must occur once. 
-2. Create a standalone Apps Script project and add `Code.js`, `Index.html`, and the manifest from this repository. Configure the project to use a Google Cloud project. Create a **Web application** OAuth client for Google sign-in. Configure the consent screen and approved test users if the app is in testing mode. You will need its client ID and secret.
-3. In Apps Script project settings, add Script Properties: `SPREADSHEET_ID`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `ALLOWED_EMAILS` (a comma-separated list of explicitly approved staff Gmail addresses). Never place these values in the repository. The deploying account must have read access to the private Sheet.
-4. Deploy as a web app, **execute as the deploying user**. The deployment must be reachable by the intended personal Google accounts; the script itself enforces the email allowlist. Add the exact deployed `/exec` URL as an authorized redirect URI in the Google OAuth client's Cloud Console settings. Redeploy when code changes. An OAuth configuration can require Google verification or test-user configuration depending on its publishing status. Don't publish real data until the full flow and sharing are verified.
-5. Test with dummy balances first: an approved and an unapproved Google account, incorrect IDs, duplicate IDs, unavailable balances, expired sessions, and an ordinary viewer lacking access to the underlying Sheet. Verify that no private Sheet or project is accessible to the viewer.
+   Store employee IDs as plain text and keep each ID unique. Leave unavailable balances empty.
+2. Set the Apps Script project property `SPREADSHEET_ID` to the Sheet ID. The deploying account must have access to the Sheet.
+3. Deploy as a web app executing as the deploying user. Anyone who can access the deployment can browse the published names and balances while anonymous mode is enabled. Redeploy a new version after code changes.
+4. Test with sample data, including duplicate IDs and unavailable balances.
 
-To update who can search, edit `ALLOWED_EMAILS`; an existing session is checked against the current allowlist on every lookup. Sessions expire after 30 minutes. Changing the Sheet or its contents does not require a web-app deployment.
+To restore Google sign-in, set `anonymous: false` in `config_()`, configure `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `ALLOWED_EMAILS`, configure the OAuth redirect URL, and redeploy. The `ALLOW_UNAUTHENTICATED` Script Property is ignored.
 
 ## Data publishing
 
 This repo does **not** calculate leave credits or automatically read the Windows desktop database. The desktop app must export or publish the selected month's computed VER2 balances into the Sheet. Until that publisher is implemented, populate it manually with reviewed data. A web lookup shows only the most recently published snapshot, not live calculations. Review identity matches and unavailable data before publishing.
 
-## Administrator access
+## Access
 
-All personnel names, employee IDs, and balances are available to approved administrators after Google sign-in. The former `ALLOW_UNAUTHENTICATED` property is ignored. Keep `ALLOWED_EMAILS` limited to approved administrators. The list contains all named rows in the published snapshot; missing or duplicate IDs cannot be selected for lookup.
+Google sign-in is temporarily disabled. All named rows in the published snapshot can be browsed by anyone who can reach the web app; missing or duplicate IDs cannot be selected for lookup.
