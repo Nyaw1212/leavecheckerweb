@@ -63,11 +63,12 @@ input,button,.sign{font-size:1rem}
 .inline-mone button{font-size:1rem;margin:10px 8px 0 0;padding:10px 16px}
 .inline-mone .inline-status{font-size:.9rem;color:#ffce95;margin:8px 0 0}
 @media(max-width:900px){.inline-mone .mone-fields{grid-template-columns:repeat(2,minmax(120px,1fr))}}
+.table-mone-period{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:12px 0}.table-mone-period label{font-size:.9rem}.table-mone-period input{width:auto;margin-top:4px;padding:8px}.table-mone-period span{font-size:.8rem;color:#b9c6d4}.balance-table{min-width:1450px}.balance-table .mone-input{width:105px;min-width:80px;margin:0;padding:8px;font-size:1rem;text-align:right}.balance-table .mone-open{font-size:.9rem}.balance-table td.mone-input-cell{padding:8px 4px}
 [hidden]{display:none!important}
 .mone-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.mone-fields label{font-size:1rem}#moneStatus{color:#ffce95}@media(max-width:900px){.mone-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:500px){.mone-fields{grid-template-columns:1fr}}
 </style></head><body><main class="wrap"><div class="eyebrow">PERSONNEL SERVICES</div><h1>Leave Balance Lookup</h1><p>View the latest published leave balance for a personnel record.</p><p id="message" role="status"></p>
 <section id="signin" class="panel" hidden><h2>Authorized staff sign-in</h2><p>Sign in using your approved Google account to continue.</p><a id="auth" class="sign">Sign in with Google</a></section>
-<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th><th scope="col">MONE</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
+<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><div class="table-mone-period"><label for="tableMoneStart">MONE start date<input type="date" id="tableMoneStart" value="2026-11-11"></label><label for="tableMoneEnd">MONE end date<input type="date" id="tableMoneEnd" value="2026-11-20"></label><span>Dates apply when recording a row. Unsubmitted inputs are saved in this browser.</span></div><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th><th scope="col">MONE VL</th><th scope="col">MONE SL</th><th scope="col">MONE</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
 <form id="moneForm" class="panel"><h3>Record MONE deduction</h3>
 <p>Deduct from the displayed web balances. Choose the MONE dates and enter the VL and/or SL deduction. The full amount is applied when saved; the snapshot date is unchanged.</p>
 <div class="mone-fields">
@@ -188,81 +189,63 @@ for (const letter of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
 }
 document.getElementById('prefixClose').addEventListener('click', closePrefixes);
 document.addEventListener('keydown', event => { if (event.key === 'Escape') closePrefixes(); });
-let inlineMoneBusy = false;
-function openInlineMone(person, row, trigger) {
-  if (inlineMoneBusy) { msg.textContent = 'Wait for the current MONE entry to finish.'; return; }
-  const existing = row.nextElementSibling;
-  if (existing && existing.classList.contains('inline-mone-row')) {
-    existing.remove();
-    trigger.setAttribute('aria-expanded', 'false');
-    return;
-  }
-  nameRows.querySelectorAll('.inline-mone-row').forEach(item => item.remove());
-  nameRows.querySelectorAll('.mone-open').forEach(item => item.setAttribute('aria-expanded', 'false'));
-  const entryRow = document.createElement('tr');
-  entryRow.className = 'inline-mone-row';
-  const cell = document.createElement('td');
-  cell.colSpan = 7;
-  const form = document.createElement('form');
-  form.className = 'inline-mone';
-  form.innerHTML = '<h3></h3><p>Enter the MONE dates and amounts. The full deduction is applied when saved; the snapshot date is unchanged.</p>' +
-    '<div class="mone-fields">' +
-    '<label>Start date<input name="startDate" type="date" value="2026-11-11" required></label>' +
-    '<label>End date<input name="endDate" type="date" value="2026-11-20" required></label>' +
-    '<label>VL to deduct<input name="vl" type="number" min="0" step="0.001" value="0" required></label>' +
-    '<label>SL to deduct<input name="sl" type="number" min="0" step="0.001" value="0" required></label>' +
-    '</div><button type="submit">Record MONE</button><button type="button" class="quiet inline-cancel">Cancel</button>' +
-    '<p class="inline-status" role="status" aria-live="polite"></p>' +
-    '<p class="muted">Unsubmitted inputs are saved on this browser. Later VER2 uploads can replace these web balances. The entry remains in MoneLog if that tab is retained.</p>';
-  form.querySelector('h3').textContent = 'Record MONE · ' + person.name;
-  const startDate = form.elements.startDate, endDate = form.elements.endDate, vl = form.elements.vl, sl = form.elements.sl;
-  const submit = form.querySelector('[type="submit"]'), cancel = form.querySelector('.inline-cancel');
-  const status = form.querySelector('.inline-status');
-  const draft = readDraft(person.employeeId);
-  if (draft) { startDate.value = draft.startDate; endDate.value = draft.endDate; vl.value = draft.vl; sl.value = draft.sl; }
+const tableMoneStart = document.getElementById('tableMoneStart'), tableMoneEnd = document.getElementById('tableMoneEnd');
+try {
+  const period = JSON.parse(localStorage.getItem('leavechecker:mone-period:v1') || 'null');
+  if (period) { tableMoneStart.value = period.startDate; tableMoneEnd.value = period.endDate; }
+} catch (_) {}
+function saveTablePeriod() {
+  try { localStorage.setItem('leavechecker:mone-period:v1', JSON.stringify({startDate:tableMoneStart.value,endDate:tableMoneEnd.value})); } catch (_) { msg.textContent = 'Could not save the dates in this browser.'; }
+}
+tableMoneStart.addEventListener('input', saveTablePeriod);
+tableMoneEnd.addEventListener('input', saveTablePeriod);
+function addMoneCells(person, row) {
+  const enabled = person.selectable && person.vl != null && person.vl !== '' && person.sl != null && person.sl !== '';
+  const draft = enabled ? readDraft(person.employeeId) : null;
   let requestId = draft && draft.requestId || '', expectedVl = draft && draft.expectedVl, expectedSl = draft && draft.expectedSl;
-  const saveDraft = () => writeDraft(person.employeeId, {startDate:startDate.value, endDate:endDate.value, vl:vl.value, sl:sl.value, requestId, expectedVl, expectedSl});
-  form.addEventListener('input', () => {
-    requestId = ''; expectedVl = null; expectedSl = null;
-    if (!saveDraft()) status.textContent = 'Draft could not be saved on this browser; keep this page open until you record it.';
-  });
-  cancel.addEventListener('click', () => { if (!inlineMoneBusy) { entryRow.remove(); trigger.setAttribute('aria-expanded', 'false'); trigger.focus(); } });
-  form.addEventListener('submit', event => {
-    event.preventDefault();
-    if (inlineMoneBusy) return;
-    if (endDate.value < startDate.value) { status.textContent = 'End date cannot be before start date.'; return; }
-    if (!Number(vl.value) && !Number(sl.value)) { status.textContent = 'Enter a VL or SL deduction.'; return; }
-    if (!window.confirm('Record MONE for ' + person.name + '?\n\nVL deduction: ' + vl.value + '\nSL deduction: ' + sl.value + '\nPeriod: ' + startDate.value + ' to ' + endDate.value + '\nThe full deduction is applied now; the snapshot date stays the same.')) return;
-    if (!requestId) {
-      requestId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
-      expectedVl = person.vl; expectedSl = person.sl;
-    }
-    saveDraft();
-    const input = {employeeId:person.employeeId,requestId,startDate:startDate.value,endDate:endDate.value,
-                   vl:vl.value,sl:sl.value,expectedVl,expectedSl};
-    inlineMoneBusy = true; submit.disabled = true; cancel.disabled = true; trigger.disabled = true;
-    status.textContent = 'Recording MONE…';
+  let savedStart = draft && draft.startDate, savedEnd = draft && draft.endDate;
+  function amountCell(label, value) {
+    const cell = document.createElement('td'); cell.className = 'mone-input-cell';
+    const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.step = '0.001';
+    input.className = 'mone-input'; input.value = value == null ? '' : value; input.placeholder = '0';
+    input.disabled = !enabled; input.setAttribute('aria-label', label + ' for ' + person.name);
+    cell.appendChild(input); row.appendChild(cell); return input;
+  }
+  const vl = amountCell('MONE VL', draft && draft.vl), sl = amountCell('MONE SL', draft && draft.sl);
+  const cell = document.createElement('td'); cell.className = 'mone-action';
+  const button = document.createElement('button'); button.type = 'button'; button.className = 'mone-open'; button.textContent = 'Record MONE'; button.disabled = !enabled;
+  button.setAttribute('aria-label', 'Record MONE for ' + person.name);
+  if (!enabled) button.title = 'A unique employee number and available VL and SL balances are required.';
+  cell.appendChild(button); row.appendChild(cell);
+  const persist = () => writeDraft(person.employeeId, {startDate:savedStart || tableMoneStart.value, endDate:savedEnd || tableMoneEnd.value, vl:vl.value, sl:sl.value, requestId, expectedVl, expectedSl});
+  function changed() {
+    requestId = ''; expectedVl = null; expectedSl = null; savedStart = tableMoneStart.value; savedEnd = tableMoneEnd.value;
+    if (!persist()) msg.textContent = 'Draft could not be saved on this browser; keep this page open until you record it.';
+  }
+  vl.addEventListener('input', changed); sl.addEventListener('input', changed);
+  button.addEventListener('click', () => {
+    const startDate = requestId ? savedStart : tableMoneStart.value, endDate = requestId ? savedEnd : tableMoneEnd.value;
+    if (!startDate || !endDate || endDate < startDate) { msg.textContent = 'Choose a valid MONE start and end date.'; return; }
+    if (!vl.checkValidity() || !sl.checkValidity()) { msg.textContent = 'Enter nonnegative amounts with at most three decimal places.'; return; }
+    if (!Number(vl.value) && !Number(sl.value)) { msg.textContent = 'Enter a MONE VL or MONE SL deduction for ' + person.name + '.'; return; }
+    if (!window.confirm('Record MONE for ' + person.name + '?\n\nVL deduction: ' + (vl.value || '0') + '\nSL deduction: ' + (sl.value || '0') + '\nPeriod: ' + startDate + ' to ' + endDate + '\nThe full deduction is applied now.')) return;
+    if (!requestId) { requestId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(36).slice(2); expectedVl = person.vl; expectedSl = person.sl; savedStart = startDate; savedEnd = endDate; }
+    if (!persist()) msg.textContent = 'Draft could not be saved in this browser.';
+    const input = {employeeId:person.employeeId, requestId, startDate, endDate, vl:vl.value || '0', sl:sl.value || '0', expectedVl, expectedSl};
+    button.disabled = vl.disabled = sl.disabled = true; msg.textContent = 'Recording MONE for ' + person.name + '…';
     google.script.run.withSuccessHandler(result => {
-      inlineMoneBusy = false; submit.disabled = false; cancel.disabled = false; trigger.disabled = false;
-      clearDraft(person.employeeId, requestId);
-      person.vl = result.vl; person.sl = result.sl;
-      row.children[1].textContent = result.vl; row.children[2].textContent = result.sl;
-      const normalizeId = value => String(value || '').replace(/[\s-]+/g, '').toLowerCase();
-      if (normalizeId(activeBalanceId) === normalizeId(person.employeeId)) {
-        document.getElementById('vl').textContent = result.vl;
-        document.getElementById('sl').textContent = result.sl;
-      }
-      status.textContent = result.alreadyApplied ? 'This MONE entry was already recorded.' : 'MONE recorded. The web balances and MoneLog were updated.';
-      msg.textContent = (result.alreadyApplied ? 'MONE was already recorded for ' : 'MONE recorded for ') + result.name + '.';
+      clearDraft(person.employeeId, input.requestId);
+      person.vl = result.vl; person.sl = result.sl; row.children[1].textContent = result.vl; row.children[2].textContent = result.sl;
+      const normalizeId = value => String(value || '').normalize('NFKC').replace(/[\s-]+/g, '').toLowerCase();
+      if (normalizeId(activeBalanceId) === normalizeId(person.employeeId)) { document.getElementById('vl').textContent = result.vl; document.getElementById('sl').textContent = result.sl; restoreDetailDraft(person.employeeId); }
+      vl.value = ''; sl.value = ''; requestId = ''; expectedVl = expectedSl = savedStart = savedEnd = null;
+      button.disabled = vl.disabled = sl.disabled = false;
+      msg.textContent = result.alreadyApplied ? 'MONE was already recorded for ' + result.name + '.' : 'MONE recorded for ' + result.name + '. The sheet was updated.';
     }).withFailureHandler(error => {
-      inlineMoneBusy = false; submit.disabled = false; cancel.disabled = false; trigger.disabled = false;
-      status.textContent = (error && error.message ? error.message : 'Could not confirm the update.') + ' Check MoneLog before making a new request.';
-      msg.textContent = 'MONE was not confirmed for ' + person.name + '. Check MoneLog before retrying.';
+      button.disabled = vl.disabled = sl.disabled = false;
+      msg.textContent = (error && error.message ? error.message : 'Could not confirm the update.') + ' Check MoneLog before making a new request.';
     }).applyMone(session, input);
   });
-  cell.appendChild(form); entryRow.appendChild(cell); row.after(entryRow);
-  trigger.setAttribute('aria-expanded', 'true');
-  startDate.focus();
 }
 function appendPersonnelBatch() {
   const end = Math.min(rendered + LIST_BATCH, matches.length);
@@ -298,17 +281,7 @@ function appendPersonnelBatch() {
       cell.textContent = person[key] == null || person[key] === '' ? '—' : person[key];
       row.appendChild(cell);
     }
-    const actionCell = document.createElement('td');
-    actionCell.className = 'mone-action';
-    const moneButton = document.createElement('button');
-    moneButton.type = 'button'; moneButton.className = 'mone-open';
-    moneButton.setAttribute('aria-expanded', 'false');
-    moneButton.textContent = 'Enter MONE';
-    moneButton.disabled = !person.selectable || person.vl == null || person.sl == null;
-    if (moneButton.disabled) moneButton.title = 'A unique employee number and available VL and SL balances are required.';
-    moneButton.setAttribute('aria-label', 'Enter MONE for ' + person.name);
-    moneButton.addEventListener('click', () => openInlineMone(person, row, moneButton));
-    actionCell.appendChild(moneButton); row.appendChild(actionCell);
+    addMoneCells(person, row);
     fragment.appendChild(row);
   }
   nameRows.appendChild(fragment);
