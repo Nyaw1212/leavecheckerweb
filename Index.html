@@ -148,13 +148,20 @@ function appendPersonnelBatch() {
     button.type = 'button'; button.className = 'person-row'; button.disabled = !person.selectable;
     if (person.selectable && person.employeeId === selectedPersonId) row.classList.add('selected');
     const name = document.createElement('span'); name.textContent = person.name; button.appendChild(name);
-    const id = document.createElement('span'); id.className = 'person-id'; id.textContent = person.selectable ? person.employeeId : 'Employee number missing or duplicated — review'; button.appendChild(id);
+    const isManualId = /^MAN-/i.test(String(person.employeeId || '').trim());
+    if (!person.selectable || !isManualId) {
+      const id = document.createElement('span');
+      id.className = 'person-id';
+      id.textContent = person.selectable ? person.employeeId : 'Employee number missing or duplicated — review';
+      button.appendChild(id);
+    }
     button.addEventListener('click', () => {
       nameRows.querySelectorAll('tr.selected').forEach(node => node.classList.remove('selected'));
       selectedPersonId = person.employeeId;
       row.classList.add('selected');
       document.getElementById('employeeId').value = person.employeeId;
       document.getElementById('form').requestSubmit();
+      if (isManualId) document.getElementById('employeeId').value = '';
     });
     nameCell.appendChild(button);
     row.appendChild(nameCell);
