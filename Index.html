@@ -69,8 +69,8 @@ input,button,.sign{font-size:1rem}
 .mone-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.mone-fields label{font-size:1rem}#moneStatus{color:#ffce95}@media(max-width:900px){.mone-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:500px){.mone-fields{grid-template-columns:1fr}}
 </style></head><body><main class="wrap"><div class="eyebrow">PERSONNEL SERVICES</div><h1>Leave Balance Lookup</h1><p>View the latest published leave balance for a personnel record.</p><p id="message" role="status"></p>
 <section id="signin" class="panel" hidden><h2>Authorized staff sign-in</h2><p>Sign in using your approved Google account to continue.</p><a id="auth" class="sign">Sign in with Google</a></section>
-<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><details class="bulk-mone"><summary>Multiple search &amp; preview MONE</summary><p class="muted">Paste tab-separated columns: optional rank, surname, first name, middle name, amount (like Excel). Rank is shown for reference and is not used to verify identity. For unmatched names, select a suggested employee after checking the full name and employee number. The amount is the requested MONE total for the date range below. The preview keeps 5 VL and 5 SL, allocates SL first, and uses increments of 5. It does not save any changes.</p><label for="bulkMoneInput">Paste personnel rows</label><textarea id="bulkMoneInput" placeholder="CTO1&#9;Alea&#9;Grace&#9;Dautil&#9;10
-CO1&#9;Rivera&#9;Charize Mae&#9;&#9;10"></textarea><div class="bulk-controls"><button id="bulkMonePreview" type="button">Preview MONE</button><button id="bulkMoneClear" type="button" class="quiet">Show all names</button></div><p id="bulkMoneStatus" class="bulk-status" role="status" aria-live="polite"></p><div class="bulk-output"><table id="bulkMoneResults" hidden><thead><tr><th>Input name</th><th>Matched employee</th><th>Current VL</th><th>Current SL</th><th>Requested</th><th>MONE VL</th><th>MONE SL</th><th>Preview VL</th><th>Preview SL</th><th>Status</th></tr></thead><tbody id="bulkMoneRows"></tbody></table></div></details><div class="table-mone-period"><label for="tableMoneStart">MONE start date<input type="date" id="tableMoneStart" value="2026-11-11"></label><label for="tableMoneEnd">MONE end date<input type="date" id="tableMoneEnd" value="2026-11-20"></label><span>MONE fields show the recorded total for these dates. Edit a value and save to adjust the balance; drafts stay in this browser.</span></div><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th><th scope="col">MONE VL</th><th scope="col">MONE SL</th><th scope="col">MONE</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
+<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><details class="bulk-mone"><summary>Multiple search &amp; preview MONE</summary><p class="muted">Paste tab-separated columns: optional rank, surname, first name, middle name, amount (like Excel). Rank is shown for reference and is not used to verify identity. For unmatched names, select a suggested employee after checking the full name and employee number. The amount is the requested MONE total for the date range below. The preview keeps 5 VL and 5 SL, allocates SL first, and uses increments of 5. Preview does not save changes. Use Save eligible rows to record reviewed entries in the sheet.</p><label for="bulkMoneInput">Paste personnel rows</label><textarea id="bulkMoneInput" placeholder="CTO1&#9;Alea&#9;Grace&#9;Dautil&#9;10
+CO1&#9;Rivera&#9;Charize Mae&#9;&#9;10"></textarea><div class="bulk-controls"><button id="bulkMonePreview" type="button">Preview MONE</button><button id="bulkMoneClear" type="button" class="quiet">Show all names</button><button id="bulkMoneSave" type="button" disabled>Save eligible rows to sheet</button><button id="bulkMoneResume" type="button" hidden>Resume interrupted save</button><button id="bulkMoneDiscard" type="button" class="quiet" hidden>Clear save queue</button></div><p id="bulkSaveStatus" class="bulk-status" role="status" aria-live="polite"></p><p id="bulkMoneStatus" class="bulk-status" role="status" aria-live="polite"></p><div class="bulk-output"><table id="bulkMoneResults" hidden><thead><tr><th>Input name</th><th>Matched employee</th><th>Current VL</th><th>Current SL</th><th>Requested</th><th>MONE VL</th><th>MONE SL</th><th>Preview VL</th><th>Preview SL</th><th>Status</th></tr></thead><tbody id="bulkMoneRows"></tbody></table></div></details><div class="table-mone-period"><label for="tableMoneStart">MONE start date<input type="date" id="tableMoneStart" value="2026-11-11"></label><label for="tableMoneEnd">MONE end date<input type="date" id="tableMoneEnd" value="2026-11-20"></label><span>MONE fields show the recorded total for these dates. Edit a value and save to adjust the balance; drafts stay in this browser.</span></div><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th><th scope="col">MONE VL</th><th scope="col">MONE SL</th><th scope="col">MONE</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
 <form id="moneForm" class="panel"><h3>Record MONE deduction</h3>
 <p>Deduct from the displayed web balances. Choose the MONE dates and enter the VL and/or SL deduction. The full amount is applied when saved; the snapshot date is unchanged.</p>
 <div class="mone-fields">
@@ -418,8 +418,12 @@ function createBulkPreview(entries, people, totals, selected = {}) {
 }
 const bulkInput = document.getElementById('bulkMoneInput');
 const bulkStatus = document.getElementById('bulkMoneStatus'), bulkRows = document.getElementById('bulkMoneRows'), bulkResults = document.getElementById('bulkMoneResults');
-let bulkHasPreview = false, bulkSelected = Object.create(null);
-function markBulkStale() { if (bulkHasPreview) bulkStatus.textContent = 'Values may have changed. Click Preview MONE again to refresh this preview.'; }
+let bulkHasPreview = false, bulkSelected = Object.create(null), bulkPreviewStale = true, bulkPreviewRows = [];
+function markBulkStale() {
+  bulkPreviewStale = true;
+  if (bulkHasPreview) bulkStatus.textContent = 'Values may have changed. Click Preview MONE again to refresh this preview.';
+  syncBulkQueueButtons();
+}
 bulkInput.addEventListener('input', () => { bulkSelected = Object.create(null); markBulkStale(); });
 tableMoneStart.addEventListener('change', markBulkStale); tableMoneEnd.addEventListener('change', markBulkStale);
 function renderBulkPreview() {
@@ -428,11 +432,12 @@ function renderBulkPreview() {
   const entries = parseBulkMone(bulkInput.value);
   if (!entries.length || entries.length > 500) { bulkStatus.textContent = 'Paste 1 to 500 rows.'; return; }
   const results = createBulkPreview(entries, personnel, recordedMone, bulkSelected);
+  bulkPreviewRows = results; bulkPreviewStale = false;
   bulkRows.replaceChildren();
   const ids = new Set();
   results.forEach(row => {
     const tr = document.createElement('tr');
-    if (row.person && row.person.selectable) ids.add(idKey(row.person.employeeId));
+    if (row.person && row.person.selectable) { ids.add(idKey(row.person.employeeId)); tr.dataset.employeeId = idKey(row.person.employeeId); }
     const nameCell = document.createElement('td'); nameCell.textContent = (row.entry.rank ? row.entry.rank + ' · ' : '') + (row.entry.display || 'Row ' + row.entry.line); tr.appendChild(nameCell);
     const matchCell = document.createElement('td');
     if (row.suggestions && row.suggestions.length) {
@@ -461,8 +466,109 @@ function renderBulkPreview() {
   });
   bulkHasPreview = true; bulkResults.hidden = false; bulkFilterIds = ids; nameSearch.value = ''; filterPersonnel();
   const review = results.filter(row => row.status !== 'Preview only').length;
-  bulkStatus.textContent = results.length + ' rows · ' + review + ' need review · ' + tableMoneStart.value + ' to ' + tableMoneEnd.value + '. Verify selected names and employee numbers. No changes saved.';
+  bulkStatus.textContent = results.length + ' rows · ' + review + ' need review · ' + tableMoneStart.value + ' to ' + tableMoneEnd.value + '. Verify selected names and employee numbers. Preview has not been saved.';
+  syncBulkQueueButtons();
 }
+// Persist each request before sending it. The server uses request IDs to make
+// retries safe when a response is lost. Unreviewed rows never enter the queue.
+const BULK_QUEUE_KEY = 'leavechecker:mone-bulk-queue:v1';
+const bulkSaveButton = document.getElementById('bulkMoneSave'), bulkResume = document.getElementById('bulkMoneResume'), bulkDiscard = document.getElementById('bulkMoneDiscard'), bulkSaveStatus = document.getElementById('bulkSaveStatus');
+let bulkQueue = null, bulkQueueError = '', bulkSaving = false;
+try {
+  const saved = localStorage.getItem(BULK_QUEUE_KEY);
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.items) || !parsed.items.every(item => item && item.input && item.input.requestId)) throw Error('Invalid save queue');
+    if (parsed.items.length) bulkQueue = parsed; else localStorage.removeItem(BULK_QUEUE_KEY);
+  }
+} catch (_) { bulkQueueError = 'Could not read the saved batch queue. Check browser storage and MoneLog before recording entries.'; }
+function writeBulkQueue(queue) {
+  try { localStorage.setItem(BULK_QUEUE_KEY, JSON.stringify(queue)); return true; }
+  catch (_) { return false; }
+}
+function syncBulkQueueButtons() {
+  bulkSaveButton.disabled = bulkSaving || !!bulkQueue || !!bulkQueueError || bulkPreviewStale || !bulkHasPreview || !bulkPreviewRows.some(row => row.status === 'Preview only' && row.projected);
+  bulkResume.hidden = !bulkQueue; bulkDiscard.hidden = !bulkQueue;
+  bulkResume.disabled = bulkDiscard.disabled = bulkSaving;
+}
+function createBulkSaveQueue(rows, totals, startDate, endDate, makeId) {
+  const items = [];
+  rows.forEach(row => {
+    if (row.status !== 'Preview only' || !row.projected || !row.person || !row.suggestion) return;
+    const previous = totals[idKey(row.person.employeeId)] || {vl:0, sl:0};
+    const deltaVl = (Math.round(row.suggestion.moneVl * 1000) - Math.round(Number(previous.vl) * 1000)) / 1000;
+    const deltaSl = (Math.round(row.suggestion.moneSl * 1000) - Math.round(Number(previous.sl) * 1000)) / 1000;
+    if (!deltaVl && !deltaSl) return;
+    items.push({name:row.person.name, employeeId:row.person.employeeId, line:row.entry.line,
+      targetVl:row.suggestion.moneVl, targetSl:row.suggestion.moneSl,
+      input:{employeeId:row.person.employeeId, requestId:makeId(), startDate, endDate,
+        vl:deltaVl, sl:deltaSl, adjustment:true, expectedVl:row.person.vl, expectedSl:row.person.sl,
+        expectedMoneVl:previous.vl, expectedMoneSl:previous.sl}});
+  });
+  return {version:1, startDate, endDate, completed:0, items};
+}
+function applyBulkItem(input) {
+  return new Promise((resolve, reject) => google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).applyMone(session, input));
+}
+function refreshAfterBulkSave() {
+  loadRecordedMone();
+  google.script.run.withSuccessHandler(result => {
+    personnel = result.items.map(person => ({...person, searchName:normalizedSearch(person.name)}));
+    filterPersonnel();
+  }).withFailureHandler(() => { searchStatus.textContent = 'Refresh the page to reload the balances.'; }).searchPersonnel(session, '');
+}
+async function runBulkQueue() {
+  if (bulkSaving || !bulkQueue) return;
+  bulkSaving = true; syncBulkQueueButtons(); markBulkStale();
+  while (bulkQueue && bulkQueue.items.length) {
+    const item = bulkQueue.items[0];
+    bulkSaveStatus.textContent = 'Saving ' + item.name + ' · ' + bulkQueue.items.length + ' remaining (' + bulkQueue.startDate + ' to ' + bulkQueue.endDate + ')…';
+    let result;
+    try { result = await applyBulkItem(item.input); }
+    catch (error) {
+      bulkSaving = false; syncBulkQueueButtons();
+      bulkSaveStatus.textContent = 'Paused at ' + item.name + ': ' + (error && error.message ? error.message : 'save could not be confirmed') + '. Check MoneLog, then resume or clear the queue.';
+      return;
+    }
+    const next = {...bulkQueue, completed:bulkQueue.completed + 1, items:bulkQueue.items.slice(1)};
+    if (!writeBulkQueue(next)) {
+      bulkSaving = false; syncBulkQueueButtons();
+      bulkSaveStatus.textContent = 'Saved ' + item.name + ', but could not update the recovery queue. Restore browser storage and resume safely.';
+      return;
+    }
+    bulkQueue = next;
+    const person = personnel && personnel.find(person => idKey(person.employeeId) === idKey(item.employeeId));
+    if (person) { person.vl = result.vl; person.sl = result.sl; }
+    if (item.line && bulkRows.children[item.line - 1] && bulkRows.children[item.line - 1].dataset.employeeId === idKey(item.employeeId)) bulkRows.children[item.line - 1].lastElementChild.textContent = result.alreadyApplied ? 'Already saved' : 'Saved to sheet';
+  }
+  const completed = bulkQueue.completed;
+  try { localStorage.removeItem(BULK_QUEUE_KEY); } catch (_) {}
+  bulkQueue = null; bulkSaving = false; syncBulkQueueButtons();
+  bulkSaveStatus.textContent = completed + ' MONE entries saved or confirmed in the sheet. Refresh the preview for current balances.';
+  refreshAfterBulkSave();
+}
+bulkSaveButton.addEventListener('click', () => {
+  if (bulkSaving || bulkQueue || bulkQueueError || bulkPreviewStale) return;
+  const makeId = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(36).slice(2) + '-' + Math.random().toString(36).slice(2);
+  const queue = createBulkSaveQueue(bulkPreviewRows, recordedMone, tableMoneStart.value, tableMoneEnd.value, makeId);
+  if (!queue.items.length) { bulkSaveStatus.textContent = 'There are no changed, eligible MONE entries to save.'; return; }
+  const reviewCount = bulkPreviewRows.filter(row => row.status !== 'Preview only').length;
+  const lines = queue.items.map(item => item.name + ' (' + item.employeeId + '): VL ' + item.targetVl + ', SL ' + item.targetSl).join('\n');
+  if (!window.confirm('Save ' + queue.items.length + ' MONE entries for ' + queue.startDate + ' to ' + queue.endDate + '?\n\n' + lines + '\n\n' + reviewCount + ' flagged row(s) will be skipped. Existing totals will be adjusted to the displayed values.')) return;
+  if (!writeBulkQueue(queue)) { bulkSaveStatus.textContent = 'Cannot save the recovery queue in this browser. No entries were sent.'; return; }
+  bulkQueue = queue; runBulkQueue();
+});
+bulkResume.addEventListener('click', () => {
+  if (bulkQueue && window.confirm('Resume the queued MONE save for ' + bulkQueue.startDate + ' to ' + bulkQueue.endDate + '? ' + bulkQueue.items.length + ' entries remain.')) runBulkQueue();
+});
+bulkDiscard.addEventListener('click', () => {
+  if (bulkSaving || !bulkQueue || !window.confirm('Check MoneLog and balances first. Clear the remaining save queue? Entries already saved will remain in the sheet.')) return;
+  try { localStorage.removeItem(BULK_QUEUE_KEY); } catch (_) { bulkSaveStatus.textContent = 'Could not clear the saved queue from browser storage.'; return; }
+  bulkQueue = null; markBulkStale(); syncBulkQueueButtons(); bulkSaveStatus.textContent = 'Queue cleared. Refresh balances and preview again before saving.'; refreshAfterBulkSave();
+});
+if (bulkQueueError) bulkSaveStatus.textContent = bulkQueueError;
+else if (bulkQueue) bulkSaveStatus.textContent = 'An interrupted MONE save has ' + bulkQueue.items.length + ' entries remaining. Check MoneLog and resume or clear the queue.';
+syncBulkQueueButtons();
 document.getElementById('bulkMonePreview').addEventListener('click', renderBulkPreview);
 document.getElementById('bulkMoneClear').addEventListener('click', () => { bulkFilterIds = null; filterPersonnel(); bulkStatus.textContent = 'Showing all names. Preview results remain above.'; });
 nameList.addEventListener('scroll', () => {
