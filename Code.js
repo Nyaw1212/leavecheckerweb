@@ -124,7 +124,9 @@ function searchPersonnel(session, query) {
   const rows = sheet.getDataRange().getValues();
   const headings = (rows.shift() || []).map(x => String(x).trim().toLowerCase());
   const ni = headings.indexOf('name'), ii = headings.indexOf('employee_id');
-  if (ni < 0 || ii < 0) throw Error('The balance sheet is not configured correctly.');
+  const balanceKeys = ['vl', 'sl', 'fl', 'wl', 'spl'];
+  const balanceIndexes = balanceKeys.map(key => headings.indexOf(key));
+  if (ni < 0 || ii < 0 || balanceIndexes.some(i => i < 0)) throw Error('The balance sheet is not configured correctly.');
   const counts = {};
   rows.forEach(row => {
     const id = normalizeEmployeeId_(row[ii]);
@@ -134,7 +136,12 @@ function searchPersonnel(session, query) {
     .map(row => {
       const id = String(row[ii] == null ? '' : row[ii]).trim();
       const key = normalizeEmployeeId_(id);
-      return {name: String(row[ni]), employeeId: id, selectable: !!key && counts[key] === 1};
+      const balances = {};
+      balanceKeys.forEach((field, index) => {
+        const value = row[balanceIndexes[index]];
+        balances[field] = value == null || value === '' ? null : String(value);
+      });
+      return {name: String(row[ni]), employeeId: id, selectable: !!key && counts[key] === 1, ...balances};
     }).sort((a, b) => a.name.localeCompare(b.name) || a.employeeId.localeCompare(b.employeeId));
   return {items: found, more: false};
 }
