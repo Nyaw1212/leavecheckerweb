@@ -69,8 +69,8 @@ input,button,.sign{font-size:1rem}
 .mone-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.mone-fields label{font-size:1rem}#moneStatus{color:#ffce95}@media(max-width:900px){.mone-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:500px){.mone-fields{grid-template-columns:1fr}}
 </style></head><body><main class="wrap"><div class="eyebrow">PERSONNEL SERVICES</div><h1>Leave Balance Lookup</h1><p>View the latest published leave balance for a personnel record.</p><p id="message" role="status"></p>
 <section id="signin" class="panel" hidden><h2>Authorized staff sign-in</h2><p>Sign in using your approved Google account to continue.</p><a id="auth" class="sign">Sign in with Google</a></section>
-<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><details class="bulk-mone"><summary>Multiple search &amp; preview MONE</summary><p class="muted">Paste Excel rows or a pipe-separated table: optional number and rank, surname, first name, middle name, amount. Rank is shown for reference and does not verify identity. For unmatched names, select a suggested employee after checking the full name and employee number. The amount is the requested MONE total for the date range below. The preview keeps 5 VL and 5 SL, allocates SL first, and uses increments of 5. Preview does not save changes. Use Save eligible rows to record reviewed entries in the sheet.</p><label for="bulkMoneInput">Paste personnel rows</label><textarea id="bulkMoneInput" placeholder="1&#9;CO1&#9;Acero&#9;Jolina&#9;Lomotos&#9;10
-2&#9;CO1&#9;Rivera&#9;Charize Mae&#9;&#9;10"></textarea><div class="bulk-controls"><button id="bulkMonePreview" type="button">Preview MONE</button><button id="bulkMoneClear" type="button" class="quiet">Show all names</button><button id="bulkMoneSave" type="button" disabled>Save eligible rows to sheet</button><button id="bulkMoneResume" type="button" hidden>Resume interrupted save</button><button id="bulkMoneDiscard" type="button" class="quiet" hidden>Clear save queue</button></div><p id="bulkSaveStatus" class="bulk-status" role="status" aria-live="polite"></p><p id="bulkMoneStatus" class="bulk-status" role="status" aria-live="polite"></p><div class="bulk-output"><table id="bulkMoneResults" hidden><thead><tr><th>Input name</th><th>Matched employee</th><th>Current VL</th><th>Current SL</th><th>Requested</th><th>MONE VL</th><th>MONE SL</th><th>Preview VL</th><th>Preview SL</th><th>Status</th></tr></thead><tbody id="bulkMoneRows"></tbody></table></div></details><div class="table-mone-period"><label for="tableMoneStart">MONE start date<input type="date" id="tableMoneStart" value="2026-11-11"></label><label for="tableMoneEnd">MONE end date<input type="date" id="tableMoneEnd" value="2026-11-20"></label><span>MONE fields show the recorded total for these dates. Edit a value and save to adjust the balance; drafts stay in this browser.</span></div><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th><th scope="col">MONE VL</th><th scope="col">MONE SL</th><th scope="col">MONE</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
+<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><details class="bulk-mone"><summary>Multiple search &amp; preview MONE</summary><p class="muted">Paste a numbered Word table, Excel rows or a pipe-separated table: optional number and rank, surname, first name, middle name, amount. Rank is shown for reference and does not verify identity. For unmatched names, select a suggested employee after checking the full name and employee number. The amount is the requested MONE total for the date range below. The preview keeps 5 VL and 5 SL, allocates SL first, and uses increments of 5. Preview does not save changes. Use Save eligible rows to record reviewed entries in the sheet.</p><label for="bulkMoneInput">Paste personnel rows</label><textarea id="bulkMoneInput" placeholder="1&#9;CO1&#9;Acero&#9;Jolina&#9;Lomotos&#9;10
+2&#9;CO1&#9;Rivera&#9;Charize Mae&#9;&#9;10"></textarea><div class="bulk-controls"><label for="bulkPasteFormat">Paste format <select id="bulkPasteFormat"><option value="auto">Auto-detect</option><option value="word">Word table: one cell per line</option></select></label><button id="bulkMonePreview" type="button">Preview MONE</button><button id="bulkMoneClear" type="button" class="quiet">Show all names</button><button id="bulkMoneSave" type="button" disabled>Save eligible rows to sheet</button><button id="bulkMoneResume" type="button" hidden>Resume interrupted save</button><button id="bulkMoneDiscard" type="button" class="quiet" hidden>Clear save queue</button></div><p id="bulkSaveStatus" class="bulk-status" role="status" aria-live="polite"></p><p id="bulkMoneStatus" class="bulk-status" role="status" aria-live="polite"></p><div class="bulk-output"><table id="bulkMoneResults" hidden><thead><tr><th>Input name</th><th>Matched employee</th><th>Current VL</th><th>Current SL</th><th>Requested</th><th>MONE VL</th><th>MONE SL</th><th>Preview VL</th><th>Preview SL</th><th>Status</th></tr></thead><tbody id="bulkMoneRows"></tbody></table></div></details><div class="table-mone-period"><label for="tableMoneStart">MONE start date<input type="date" id="tableMoneStart" value="2026-11-11"></label><label for="tableMoneEnd">MONE end date<input type="date" id="tableMoneEnd" value="2026-11-20"></label><span>MONE fields show the recorded total for these dates. Edit a value and save to adjust the balance; drafts stay in this browser.</span></div><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th><th scope="col">MONE VL</th><th scope="col">MONE SL</th><th scope="col">MONE</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
 <form id="moneForm" class="panel"><h3>Record MONE deduction</h3>
 <p>Deduct from the displayed web balances. Choose the MONE dates and enter the VL and/or SL deduction. The full amount is applied when saved; the snapshot date is unchanged.</p>
 <div class="mone-fields">
@@ -330,9 +330,29 @@ nameSearch.addEventListener('input', () => { bulkFilterIds = null; filterPersonn
 function bulkWords(value) {
   return String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
 }
+// Word may flatten a copied table to one cell per line. Only reconstruct the
+// numbered, six-column form when the entire paste has a consistent shape.
+function rebuildWordMone(value) {
+  const original = String(value || '');
+  if (original.includes('\t') || original.includes('|')) return null;
+  const cells = original.split(/\r?\n/).map(cell => cell.replace(/&#(?:x20|32);|&nbsp;/gi, ' ').trim());
+  while (cells.length && !cells[0]) cells.shift();
+  while (cells.length && !cells[cells.length - 1]) cells.pop();
+  if (!cells.length || cells.length % 6 !== 0) return null;
+  let previousNumber = null;
+  for (let i = 0; i < cells.length; i += 6) {
+    const [number, rank, surname, given, middle, amount] = cells.slice(i, i + 6);
+    if (!/^\d+\.?$/.test(number) || !/^[a-z]{1,8}\s*\d[a-z0-9.\-]*$/i.test(rank) || !surname || !given || !/^(?:\d+)(?:\.\d{1,3})?$/.test(amount) || Number(amount) > 100000) return null;
+    const serial = Number(number.replace(/\.$/, ''));
+    if (!Number.isSafeInteger(serial) || (previousNumber !== null && serial !== previousNumber + 1)) return null;
+    previousNumber = serial;
+  }
+  return cells.reduce((rows, cell, i) => { if (i % 6 === 0) rows.push([]); rows[rows.length - 1].push(cell); return rows; }, []).map(row => row.join('\t')).join('\n');
+}
 function parseBulkMone(value) {
   const parsed = [];
-  String(value || '').split(/\r?\n/).forEach(rawLine => {
+  const reconstructed = rebuildWordMone(value);
+  (reconstructed === null ? String(value || '') : reconstructed).split(/\r?\n/).forEach(rawLine => {
     const line = rawLine.replace(/&#(?:x20|32);|&nbsp;/gi, ' ');
     if (!line.trim()) return;
     let cells;
@@ -349,7 +369,7 @@ function parseBulkMone(value) {
     const offset = cells.length === 6 ? 2 : cells.length === 5 ? 1 : 0;
     const [surname = '', given = '', middle = '', amount = ''] = cells.slice(offset);
     const valid = [4, 5, 6].includes(cells.length) && (cells.length !== 6 || /^\d+\.?$/.test(number)) && !!surname && !!given && /^(?:\d+)(?:\.\d{1,3})?$/.test(amount) && Number(amount) <= 100000;
-    parsed.push({line:parsed.length + 1, number, rank, surname, given, middle, amount, valid,
+    parsed.push({line:parsed.length + 1, number, rank, surname, given, middle, amount, valid, wordReconstructed:reconstructed !== null,
       display:[surname, [given, middle].filter(Boolean).join(' ')].filter(Boolean).join(', ')});
   });
   return parsed;
@@ -431,7 +451,7 @@ function createBulkPreview(entries, people, totals, selected = {}) {
   results.forEach(row => { if (row.person && counts.get(idKey(row.person.employeeId)) > 1) { row.projected = null; row.status = 'Employee appears more than once; review.'; } });
   return results;
 }
-const bulkInput = document.getElementById('bulkMoneInput');
+const bulkInput = document.getElementById('bulkMoneInput'), bulkPasteFormat = document.getElementById('bulkPasteFormat');
 const bulkStatus = document.getElementById('bulkMoneStatus'), bulkRows = document.getElementById('bulkMoneRows'), bulkResults = document.getElementById('bulkMoneResults');
 let bulkHasPreview = false, bulkSelected = Object.create(null), bulkPreviewStale = true, bulkPreviewRows = [];
 function markBulkStale() {
@@ -440,10 +460,12 @@ function markBulkStale() {
   syncBulkQueueButtons();
 }
 bulkInput.addEventListener('input', () => { bulkSelected = Object.create(null); markBulkStale(); });
+bulkPasteFormat.addEventListener('change', markBulkStale);
 tableMoneStart.addEventListener('change', markBulkStale); tableMoneEnd.addEventListener('change', markBulkStale);
 function renderBulkPreview() {
   if (!personnel) { bulkStatus.textContent = 'Personnel are still loading.'; return; }
   if (recordedStatus !== 'ready') { bulkStatus.textContent = 'MONE totals are unavailable. Select valid dates and wait for totals to load.'; return; }
+  if (bulkPasteFormat.value === 'word' && rebuildWordMone(bulkInput.value) === null) { bulkStatus.textContent = 'Could not safely rebuild the Word table. Copy the complete numbered six-column table, including blank cells.'; return; }
   const entries = parseBulkMone(bulkInput.value);
   if (!entries.length || entries.length > 500) { bulkStatus.textContent = 'Paste 1 to 500 rows.'; return; }
   const results = createBulkPreview(entries, personnel, recordedMone, bulkSelected);
@@ -481,7 +503,9 @@ function renderBulkPreview() {
   });
   bulkHasPreview = true; bulkResults.hidden = false; bulkFilterIds = ids; nameSearch.value = ''; filterPersonnel();
   const review = results.filter(row => row.status !== 'Preview only').length;
-  bulkStatus.textContent = results.length + ' rows · ' + review + ' need review · ' + tableMoneStart.value + ' to ' + tableMoneEnd.value + '. Verify selected names and employee numbers. Preview has not been saved.';
+  const wordNotice = entries.some(entry => entry.wordReconstructed) ? 'Word table rebuilt from one cell per line — check every name and amount. ' : '';
+  const failedWord = entries.length >= 6 && entries.every(entry => !entry.valid) && !/[\t|]/.test(bulkInput.value) ? 'Could not safely rebuild these Word cells; copy the complete numbered six-column table. ' : '';
+  bulkStatus.textContent = wordNotice + failedWord + results.length + ' rows · ' + review + ' need review · ' + tableMoneStart.value + ' to ' + tableMoneEnd.value + '. Verify selected names and employee numbers. Preview has not been saved.';
   syncBulkQueueButtons();
 }
 // Persist each request before sending it. The server uses request IDs to make
