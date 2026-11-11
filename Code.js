@@ -166,13 +166,14 @@ function applyMone(session, input) {
     return !isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
   }
   const year = Number(startDate.slice(0, 4)), month = Number(startDate.slice(5, 7));
-  function amount(value) {
+  function amount(value, signed) {
     if (value === '' || value === null || value === undefined) return 0;
     const n = Number(value);
-    if (!Number.isFinite(n) || n < 0 || n > 100000 || Math.abs(n * 1000 - Math.round(n * 1000)) > 1e-6) throw Error('Enter nonnegative amounts with at most three decimal places.');
+    if (!Number.isFinite(n) || (!signed && n < 0) || Math.abs(n) > 100000 || Math.abs(n * 1000 - Math.round(n * 1000)) > 1e-6) throw Error('Enter nonnegative amounts with at most three decimal places.');
     return Math.round(n * 1000);
   }
-  const vlDeduction = amount(input.vl), slDeduction = amount(input.sl);
+  const adjusting = input.adjustment === true;
+  const vlDeduction = amount(input.vl, adjusting), slDeduction = amount(input.sl, adjusting);
   if (!id || id.length > 100 || !/^[a-zA-Z0-9-]{16,80}$/.test(requestId) ||
       !validDate(startDate) || !validDate(endDate) || startDate > endDate ||
       !Number.isInteger(year) || year < 1900 || year > 2100 ||
@@ -223,6 +224,17 @@ function applyMone(session, input) {
     }
     if (logRows.slice(1).some(row => normalizeEmployeeId_(row[1]) === id && String(row[12]) === 'PENDING'))
       throw Error('This employee has a pending MONE entry. Check MoneLog and balances before recording another.');
+    if (adjusting) {
+      const dateValue = value => value instanceof Date ? Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(value == null ? '' : value).trim();
+      let currentVl = 0, currentSl = 0;
+      logRows.slice(1).forEach(row => {
+        if (normalizeEmployeeId_(row[1]) !== id || String(row[12]).trim().toUpperCase() !== 'APPLIED' || dateValue(row[13]) !== startDate || dateValue(row[14]) !== endDate) return;
+        if (!Number.isFinite(Number(row[5])) || !Number.isFinite(Number(row[6]))) throw Error('MoneLog has invalid amounts. Review the sheet.');
+        currentVl += Math.round(Number(row[5]) * 1000); currentSl += Math.round(Number(row[6]) * 1000);
+      });
+      if (amount(input.expectedMoneVl) !== currentVl || amount(input.expectedMoneSl) !== currentSl) throw Error('MONE totals changed since they were displayed. Reload and review them.');
+      if (currentVl + vlDeduction < 0 || currentSl + slDeduction < 0) throw Error('MONE totals cannot be negative.');
+    }
     function balance(value, label) {
       if (value === '' || value === null || value === undefined || !Number.isFinite(Number(value))) throw Error(label + ' balance is unavailable. Review it before recording MONE.');
       return Math.round(Number(value) * 1000);
