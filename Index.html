@@ -27,6 +27,14 @@ body{padding:24px clamp(16px,2vw,40px);font-size:18px}
 .name-list{max-height:60vh}
 input,button,.sign{font-size:1rem}
 @media(max-width:900px){body{padding:18px 14px;font-size:16px}.workspace{grid-template-columns:1fr}.name-list{max-height:45vh}.balance-table{min-width:610px;font-size:1rem}.balance-table .person-row{font-size:1rem}}
+
+/* Full-width personnel table with larger text. */
+.workspace{grid-template-columns:minmax(0,1fr)}
+.balance-table{font-size:24pt;min-width:1100px}
+.balance-table .person-row{font-size:24pt}
+.balance-table .person-id{font-size:14pt}
+.balance-table th:first-child{min-width:400px}
+@media(max-width:900px){.workspace{grid-template-columns:minmax(0,1fr)}}
 [hidden]{display:none!important}
 </style></head><body><main class="wrap"><div class="eyebrow">PERSONNEL SERVICES</div><h1>Leave Balance Lookup</h1><p>View the latest published leave balance for a personnel record.</p><p id="message" role="status"></p>
 <section id="signin" class="panel" hidden><h2>Authorized staff sign-in</h2><p>Sign in using your approved Google account to continue.</p><a id="auth" class="sign">Sign in with Google</a></section>
