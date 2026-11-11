@@ -35,10 +35,25 @@ input,button,.sign{font-size:1rem}
 .balance-table .person-id{font-size:14pt}
 .balance-table th:first-child{min-width:400px}
 @media(max-width:900px){.workspace{grid-template-columns:minmax(0,1fr)}}
+
+/* Alphabet shortcuts beside the scrollable balance table. */
+.table-navigation{display:flex;align-items:stretch;gap:8px;min-width:0}
+.table-navigation .name-list{flex:1;min-width:0}
+.alphabet-index{position:relative;flex:0 0 44px;margin:8px 0 20px}
+.alphabet-letters{display:flex;flex-direction:column;max-height:60vh;overflow-y:auto;gap:2px}
+.alphabet-letters button{margin:0;padding:4px;border-radius:5px;background:#253247;color:#e6ca8b;font-size:.85rem;line-height:1.1}
+.alphabet-letters button:hover,.alphabet-letters button[aria-expanded="true"]{background:#d6ba79;color:#111827}
+.alphabet-letters button:disabled{opacity:.3;cursor:default}
+.prefix-popup{position:absolute;z-index:4;right:48px;top:0;min-width:200px;max-width:320px;max-height:55vh;overflow:auto;padding:12px;border:1px solid #a48b58;border-radius:10px;background:#202c3e;box-shadow:0 6px 25px #0009}
+.prefix-popup strong{display:block;color:#e6ca8b;margin-bottom:8px}
+.prefix-options{display:flex;flex-wrap:wrap;gap:6px}
+.prefix-options button,.prefix-close{margin:0;padding:8px 10px;font-size:1rem}
+.prefix-close{float:right;background:transparent;color:#fff;padding:2px 6px}
+@media(max-width:900px){.alphabet-letters{max-height:45vh}.alphabet-index{flex-basis:38px}}
 [hidden]{display:none!important}
 </style></head><body><main class="wrap"><div class="eyebrow">PERSONNEL SERVICES</div><h1>Leave Balance Lookup</h1><p>View the latest published leave balance for a personnel record.</p><p id="message" role="status"></p>
 <section id="signin" class="panel" hidden><h2>Authorized staff sign-in</h2><p>Sign in using your approved Google account to continue.</p><a id="auth" class="sign">Sign in with Google</a></section>
-<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th></tr></thead><tbody id="nameRows"></tbody></table></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p></section>
+<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p></section>
 </div></div></main>
 <script>
 const anonymousMode = <?!= JSON.stringify(anonymousMode) ?>;
@@ -58,6 +73,70 @@ const nameSearch = document.getElementById('nameSearch'), nameList = document.ge
 function normalizedSearch(value) {
   return String(value || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
 }
+const alphabetLetters = document.getElementById('alphabetLetters');
+const prefixPopup = document.getElementById('prefixPopup');
+const prefixOptions = document.getElementById('prefixOptions');
+const prefixTitle = document.getElementById('prefixTitle');
+let activeLetter = '';
+function indexName(value) {
+  return normalizedSearch(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+}
+function closePrefixes() {
+  prefixPopup.hidden = true;
+  alphabetLetters.querySelectorAll('button').forEach(button => button.setAttribute('aria-expanded', 'false'));
+}
+function jumpToPrefix(prefix) {
+  const index = matches.findIndex(person => indexName(person.name).startsWith(prefix));
+  if (index < 0) return;
+  while (rendered <= index) appendPersonnelBatch();
+  const row = nameRows.children[index];
+  if (row) {
+    const header = nameList.querySelector('thead');
+    const headerHeight = header ? header.getBoundingClientRect().height : 0;
+    nameList.scrollTop += row.getBoundingClientRect().top - nameList.getBoundingClientRect().top - headerHeight;
+  }
+}
+function showPrefixes(letter, trigger) {
+  if (activeLetter === letter && !prefixPopup.hidden) { closePrefixes(); return; }
+  activeLetter = letter;
+  jumpToPrefix(letter);
+  const prefixes = [...new Set(matches.map(person => indexName(person.name).slice(0, 2))
+    .filter(prefix => prefix.length === 2 && prefix.startsWith(letter)))].sort();
+  prefixOptions.replaceChildren();
+  prefixTitle.textContent = letter + ' surnames';
+  prefixes.forEach(prefix => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = prefix;
+    button.addEventListener('click', () => { jumpToPrefix(prefix); closePrefixes(); trigger.focus(); });
+    prefixOptions.appendChild(button);
+  });
+  if (!prefixes.length) {
+    const note = document.createElement('span');
+    note.textContent = 'No two-letter prefixes available.';
+    prefixOptions.appendChild(note);
+  }
+  alphabetLetters.querySelectorAll('button').forEach(button => button.setAttribute('aria-expanded', 'false'));
+  trigger.setAttribute('aria-expanded', 'true');
+  prefixPopup.hidden = false;
+}
+function refreshAlphabet() {
+  const available = new Set(matches.map(person => indexName(person.name).slice(0, 1)));
+  alphabetLetters.querySelectorAll('button').forEach(button => { button.disabled = !available.has(button.textContent); });
+  closePrefixes();
+}
+for (const letter of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = letter;
+  button.disabled = true;
+  button.setAttribute('aria-label', 'Jump to surnames starting with ' + letter);
+  button.setAttribute('aria-expanded', 'false');
+  button.addEventListener('click', () => showPrefixes(letter, button));
+  alphabetLetters.appendChild(button);
+}
+document.getElementById('prefixClose').addEventListener('click', closePrefixes);
+document.addEventListener('keydown', event => { if (event.key === 'Escape') closePrefixes(); });
 function appendPersonnelBatch() {
   const end = Math.min(rendered + LIST_BATCH, matches.length);
   const fragment = document.createDocumentFragment();
@@ -97,6 +176,7 @@ function filterPersonnel() {
   nameList.scrollTop = 0;
   searchStatus.textContent = matches.length ? matches.length + ' matching personnel.' : 'No matching names.';
   appendPersonnelBatch();
+  refreshAlphabet();
 }
 nameSearch.addEventListener('input', filterPersonnel);
 nameList.addEventListener('scroll', () => {
