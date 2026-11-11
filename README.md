@@ -15,7 +15,7 @@ This is a public source-code repository. Never commit names, balances, a spreads
    `employee_id | name | as_of | vl | sl | fl | wl | spl | updated_at`
 
    Store employee IDs as plain text and keep each ID unique. Leave unavailable balances empty. VL and SL columns must be adjacent for MONE entry.
-2. Set the Apps Script project property `SPREADSHEET_ID` to the Sheet ID. Set `MONE_ADMIN_PIN` to a private PIN of at least six characters. The deploying account must be able to edit the Sheet.
+2. Set the Apps Script project property `SPREADSHEET_ID` to the Sheet ID. The deploying account must be able to edit the Sheet.
 3. Deploy as a web app executing as the deploying user. Anyone who can access the deployment can browse the published names and balances while anonymous mode is enabled. Redeploy a new version after code changes.
 4. Test with sample data, including duplicate IDs and unavailable balances.
 
@@ -23,7 +23,7 @@ To restore Google sign-in, set `anonymous: false` in `config_()`, configure `GOO
 
 ## Recording MONE
 
-Select an employee, then enter the MONE month, year, VL deduction, SL deduction, and admin PIN. The app subtracts the specified amounts from the current web sheet balances and records before/after values in a `MoneLog` tab. It does not calculate monthly accruals or update the desktop database. The entry month cannot be later than the snapshot month; the snapshot date is not changed. Duplicate submissions with the same request ID are not applied twice. A pending log entry requires manual review before another entry for that employee.
+Select an employee, then enter the MONE start and end dates and the VL and SL deductions. The dates default to November 11–20, 2026 and can be changed. The app subtracts the specified amounts from the current web sheet balances and records before/after values in a `MoneLog` tab. It does not calculate monthly accruals or update the desktop database. The start month cannot be later than the snapshot month; the snapshot date is not changed. The full deduction is applied immediately even when the end date is later than the snapshot date. Duplicate submissions with the same request ID are not applied twice. A pending log entry requires manual review before another entry for that employee.
 
 A later VER2 import that replaces the balance rows may overwrite these web-only deductions. The log is preserved only if the import does not replace or delete its tab. Reconcile the records before publishing another snapshot.
 
@@ -33,4 +33,4 @@ This repo does **not** calculate leave credits or automatically read the Windows
 
 ## Access
 
-Google sign-in is temporarily disabled. All named rows in the published snapshot can be browsed by anyone who can reach the web app; missing or duplicate IDs cannot be selected for lookup.
+Google sign-in and the MONE PIN are disabled. Anyone who can reach the app can browse names and balances and submit MONE deductions. Missing or duplicate IDs cannot be selected for lookup.

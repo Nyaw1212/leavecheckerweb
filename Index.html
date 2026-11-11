@@ -69,12 +69,12 @@ input,button,.sign{font-size:1rem}
 <section id="signin" class="panel" hidden><h2>Authorized staff sign-in</h2><p>Sign in using your approved Google account to continue.</p><a id="auth" class="sign">Sign in with Google</a></section>
 <div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th><th scope="col">MONE</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
 <form id="moneForm" class="panel"><h3>Record MONE deduction</h3>
-<p>Deduct from the displayed web balances. Choose the month and year, then enter the amount for VL and/or SL. The month and year are recorded; the snapshot date is unchanged.</p>
+<p>Deduct from the displayed web balances. Choose the MONE dates and enter the VL and/or SL deduction. The full amount is applied when saved; the snapshot date is unchanged.</p>
 <div class="mone-fields">
-<label>Month and year<input id="moneMonth" type="month" required></label>
+<label>Start date<input id="moneStart" type="date" value="2026-11-11" required></label><label>End date<input id="moneEnd" type="date" value="2026-11-20" required></label>
 <label>VL to deduct<input id="moneVl" type="number" min="0" step="0.001" value="0" required></label>
 <label>SL to deduct<input id="moneSl" type="number" min="0" step="0.001" value="0" required></label>
-<label>Admin PIN<input id="monePin" type="password" autocomplete="off" required></label>
+
 </div><button id="moneSubmit" type="submit">Record MONE</button><p id="moneStatus" role="status" aria-live="polite"></p>
 <p class="muted">A later VER2 upload can replace these web balances. MONE entries remain in the sheet log.</p></form></section>
 </div></div></main>
@@ -177,36 +177,35 @@ function openInlineMone(person, row, trigger) {
   cell.colSpan = 7;
   const form = document.createElement('form');
   form.className = 'inline-mone';
-  form.innerHTML = '<h3></h3><p>Enter the month and amounts to deduct from the displayed balances.</p>' +
+  form.innerHTML = '<h3></h3><p>Enter the MONE dates and amounts. The full deduction is applied when saved; the snapshot date is unchanged.</p>' +
     '<div class="mone-fields">' +
-    '<label>Month and year<input name="period" type="month" required></label>' +
+    '<label>Start date<input name="startDate" type="date" value="2026-11-11" required></label>' +
+    '<label>End date<input name="endDate" type="date" value="2026-11-20" required></label>' +
     '<label>VL to deduct<input name="vl" type="number" min="0" step="0.001" value="0" required></label>' +
     '<label>SL to deduct<input name="sl" type="number" min="0" step="0.001" value="0" required></label>' +
-    '<label>Admin PIN<input name="pin" type="password" autocomplete="off" required></label>' +
     '</div><button type="submit">Record MONE</button><button type="button" class="quiet inline-cancel">Cancel</button>' +
     '<p class="inline-status" role="status" aria-live="polite"></p>' +
     '<p class="muted">Later VER2 uploads can replace these web balances. The entry remains in MoneLog if that tab is retained.</p>';
   form.querySelector('h3').textContent = 'Record MONE · ' + person.name;
-  const period = form.elements.period, vl = form.elements.vl, sl = form.elements.sl, pin = form.elements.pin;
+  const startDate = form.elements.startDate, endDate = form.elements.endDate, vl = form.elements.vl, sl = form.elements.sl;
   const submit = form.querySelector('[type="submit"]'), cancel = form.querySelector('.inline-cancel');
   const status = form.querySelector('.inline-status');
   let requestId = '';
-  form.addEventListener('input', event => { if (event.target !== pin) requestId = ''; });
+  form.addEventListener('input', () => { requestId = ''; });
   cancel.addEventListener('click', () => { if (!inlineMoneBusy) { entryRow.remove(); trigger.setAttribute('aria-expanded', 'false'); trigger.focus(); } });
   form.addEventListener('submit', event => {
     event.preventDefault();
     if (inlineMoneBusy) return;
+    if (endDate.value < startDate.value) { status.textContent = 'End date cannot be before start date.'; return; }
     if (!Number(vl.value) && !Number(sl.value)) { status.textContent = 'Enter a VL or SL deduction.'; return; }
-    if (!window.confirm('Record MONE for ' + person.name + '?\n\nVL deduction: ' + vl.value + '\nSL deduction: ' + sl.value + '\nMonth: ' + period.value)) return;
+    if (!window.confirm('Record MONE for ' + person.name + '?\n\nVL deduction: ' + vl.value + '\nSL deduction: ' + sl.value + '\nPeriod: ' + startDate.value + ' to ' + endDate.value + '\nThe full deduction is applied now; the snapshot date stays the same.')) return;
     if (!requestId) requestId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
-    const parts = period.value.split('-');
-    const input = {employeeId:person.employeeId,requestId,year:Number(parts[0]),month:Number(parts[1]),
-                   vl:vl.value,sl:sl.value,expectedVl:person.vl,expectedSl:person.sl,pin:pin.value};
+    const input = {employeeId:person.employeeId,requestId,startDate:startDate.value,endDate:endDate.value,
+                   vl:vl.value,sl:sl.value,expectedVl:person.vl,expectedSl:person.sl};
     inlineMoneBusy = true; submit.disabled = true; cancel.disabled = true; trigger.disabled = true;
     status.textContent = 'Recording MONE…';
     google.script.run.withSuccessHandler(result => {
       inlineMoneBusy = false; submit.disabled = false; cancel.disabled = false; trigger.disabled = false;
-      pin.value = '';
       person.vl = result.vl; person.sl = result.sl;
       row.children[1].textContent = result.vl; row.children[2].textContent = result.sl;
       const normalizeId = value => String(value || '').replace(/[\s-]+/g, '').toLowerCase();
@@ -224,7 +223,7 @@ function openInlineMone(person, row, trigger) {
   });
   cell.appendChild(form); entryRow.appendChild(cell); row.after(entryRow);
   trigger.setAttribute('aria-expanded', 'true');
-  period.focus();
+  startDate.focus();
 }
 function appendPersonnelBatch() {
   const end = Math.min(rendered + LIST_BATCH, matches.length);
@@ -300,22 +299,22 @@ if (anonymousMode || session) {
 }
 
 const moneForm = document.getElementById('moneForm'), moneStatus = document.getElementById('moneStatus');
-moneForm.addEventListener('input', event => { if (event.target.id !== 'monePin') moneRequestId = ''; });
+moneForm.addEventListener('input', () => { moneRequestId = ''; });
 moneForm.addEventListener('submit', event => {
   event.preventDefault();
   if (!activeBalanceId) { moneStatus.textContent = 'Select an employee first.'; return; }
-  const period = document.getElementById('moneMonth').value.split('-');
+  const startDate = document.getElementById('moneStart').value, endDate = document.getElementById('moneEnd').value;
+  if (endDate < startDate) { moneStatus.textContent = 'End date cannot be before start date.'; return; }
   const vl = document.getElementById('moneVl').value, sl = document.getElementById('moneSl').value;
   if (!Number(vl) && !Number(sl)) { moneStatus.textContent = 'Enter a VL or SL deduction.'; return; }
-  if (!window.confirm('Record MONE for ' + document.getElementById('employee').textContent + '?\n\nVL deduction: ' + vl + '\nSL deduction: ' + sl + '\nMonth: ' + period.join('-'))) return;
+  if (!window.confirm('Record MONE for ' + document.getElementById('employee').textContent + '?\n\nVL deduction: ' + vl + '\nSL deduction: ' + sl + '\nPeriod: ' + startDate + ' to ' + endDate + '\nThe full deduction is applied now; the snapshot date stays the same.')) return;
   if (!moneRequestId) moneRequestId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
   const subjectId = activeBalanceId, lookupVersion = lookupGeneration;
-  const input = {employeeId:activeBalanceId,requestId:moneRequestId,year:Number(period[0]),month:Number(period[1]),vl,sl,expectedVl:document.getElementById('vl').textContent,expectedSl:document.getElementById('sl').textContent,pin:document.getElementById('monePin').value};
+  const input = {employeeId:activeBalanceId,requestId:moneRequestId,startDate,endDate,vl,sl,expectedVl:document.getElementById('vl').textContent,expectedSl:document.getElementById('sl').textContent};
   const button = document.getElementById('moneSubmit'); button.disabled = true;
   moneStatus.textContent = 'Recording MONE…';
   google.script.run.withSuccessHandler(result => {
     button.disabled = false;
-    document.getElementById('monePin').value = '';
     if (lookupVersion === lookupGeneration && subjectId === activeBalanceId) {
       document.getElementById('vl').textContent = result.vl;
       document.getElementById('sl').textContent = result.sl;
@@ -334,5 +333,6 @@ moneForm.addEventListener('submit', event => {
 });
 document.getElementById('logout').addEventListener('click',()=>{google.script.run.signOut(session);session='';document.getElementById('result').hidden=true;document.getElementById('workspace').hidden=true;document.getElementById('signin').hidden=false;window.top.location.href=appUrl});
 </script></body></html>
+
 
 
