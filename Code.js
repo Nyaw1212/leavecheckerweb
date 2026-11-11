@@ -260,3 +260,34 @@ function applyMone(session, input) {
 }
 
 
+
+// Totals are for confirmed entries with the exact selected date range. Older
+// month-only records cannot be safely assigned to a specific range.
+function getRecordedMone(session, startDate, endDate) {
+  const config = authorizedConfig_(session);
+  const isoDate = value => {
+    if (value instanceof Date) return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    return String(value == null ? '' : value).trim();
+  };
+  const valid = value => /^\d{4}-\d{2}-\d{2}$/.test(value) && !isNaN(new Date(value + 'T00:00:00Z').getTime()) && new Date(value + 'T00:00:00Z').toISOString().slice(0, 10) === value;
+  startDate = String(startDate || ''); endDate = String(endDate || '');
+  if (!valid(startDate) || !valid(endDate) || startDate > endDate) throw Error('Choose a valid MONE date range.');
+  const log = SpreadsheetApp.openById(config.spreadsheet).getSheetByName('MoneLog');
+  if (!log) return {};
+  const rows = log.getDataRange().getValues(), headers = (rows.shift() || []).map(x => String(x).trim().toLowerCase());
+  const fields = ['employee_id', 'vl_deducted', 'sl_deducted', 'status', 'start_date', 'end_date'];
+  const indexes = fields.map(field => headers.indexOf(field));
+  if (indexes.slice(0, 4).some(i => i < 0)) throw Error('MoneLog headers do not match the expected format.');
+  if (indexes[4] < 0 && indexes[5] < 0) return {};
+  if (indexes[4] < 0 || indexes[5] < 0) throw Error('MoneLog date columns are incomplete.');
+  const totals = Object.create(null);
+  rows.forEach(row => {
+    if (String(row[indexes[3]]).trim().toUpperCase() !== 'APPLIED' || isoDate(row[indexes[4]]) !== startDate || isoDate(row[indexes[5]]) !== endDate) return;
+    const id = normalizeEmployeeId_(row[indexes[0]]), vl = Number(row[indexes[1]]), sl = Number(row[indexes[2]]);
+    if (!id || !Number.isFinite(vl) || !Number.isFinite(sl)) return;
+    if (!totals[id]) totals[id] = {vl: 0, sl: 0};
+    totals[id].vl += Math.round(vl * 1000); totals[id].sl += Math.round(sl * 1000);
+  });
+  Object.keys(totals).forEach(id => { totals[id].vl /= 1000; totals[id].sl /= 1000; });
+  return totals;
+}
