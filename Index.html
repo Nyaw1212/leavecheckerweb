@@ -63,12 +63,12 @@ input,button,.sign{font-size:1rem}
 .inline-mone button{font-size:1rem;margin:10px 8px 0 0;padding:10px 16px}
 .inline-mone .inline-status{font-size:.9rem;color:#ffce95;margin:8px 0 0}
 @media(max-width:900px){.inline-mone .mone-fields{grid-template-columns:repeat(2,minmax(120px,1fr))}}
-.table-mone-period{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:12px 0}.table-mone-period label{font-size:.9rem}.table-mone-period input{width:auto;margin-top:4px;padding:8px}.table-mone-period span{font-size:.8rem;color:#b9c6d4}.balance-table{min-width:1450px}.balance-table .mone-input{width:105px;min-width:80px;margin:0;padding:8px;font-size:1rem;text-align:right}.balance-table .mone-open{font-size:.9rem}.balance-table td.mone-input-cell{padding:8px 4px}
+.table-mone-period{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:12px 0}.table-mone-period label{font-size:.9rem}.table-mone-period input{width:auto;margin-top:4px;padding:8px}.table-mone-period span{font-size:.8rem;color:#b9c6d4}.balance-table{min-width:1450px}.balance-table .mone-input{width:105px;min-width:80px;margin:0;padding:8px;font-size:1rem;text-align:right}.balance-table .mone-open{font-size:.9rem}.balance-table td.mone-input-cell{padding:8px 4px}.mone-recorded{display:block;color:#b9c6d4;font-size:.75rem;white-space:nowrap;margin-top:4px}
 [hidden]{display:none!important}
 .mone-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.mone-fields label{font-size:1rem}#moneStatus{color:#ffce95}@media(max-width:900px){.mone-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:500px){.mone-fields{grid-template-columns:1fr}}
 </style></head><body><main class="wrap"><div class="eyebrow">PERSONNEL SERVICES</div><h1>Leave Balance Lookup</h1><p>View the latest published leave balance for a personnel record.</p><p id="message" role="status"></p>
 <section id="signin" class="panel" hidden><h2>Authorized staff sign-in</h2><p>Sign in using your approved Google account to continue.</p><a id="auth" class="sign">Sign in with Google</a></section>
-<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><div class="table-mone-period"><label for="tableMoneStart">MONE start date<input type="date" id="tableMoneStart" value="2026-11-11"></label><label for="tableMoneEnd">MONE end date<input type="date" id="tableMoneEnd" value="2026-11-20"></label><span>Dates apply when recording a row. Unsubmitted inputs are saved in this browser.</span></div><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th><th scope="col">MONE VL</th><th scope="col">MONE SL</th><th scope="col">MONE</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
+<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><div class="table-mone-period"><label for="tableMoneStart">MONE start date<input type="date" id="tableMoneStart" value="2026-11-11"></label><label for="tableMoneEnd">MONE end date<input type="date" id="tableMoneEnd" value="2026-11-20"></label><span>Recorded totals match these exact dates. Enter an additional deduction in the fields; drafts stay in this browser.</span></div><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th><th scope="col">MONE VL</th><th scope="col">MONE SL</th><th scope="col">MONE</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
 <form id="moneForm" class="panel"><h3>Record MONE deduction</h3>
 <p>Deduct from the displayed web balances. Choose the MONE dates and enter the VL and/or SL deduction. The full amount is applied when saved; the snapshot date is unchanged.</p>
 <div class="mone-fields">
@@ -197,8 +197,30 @@ try {
 function saveTablePeriod() {
   try { localStorage.setItem('leavechecker:mone-period:v1', JSON.stringify({startDate:tableMoneStart.value,endDate:tableMoneEnd.value})); } catch (_) { msg.textContent = 'Could not save the dates in this browser.'; }
 }
-tableMoneStart.addEventListener('input', saveTablePeriod);
-tableMoneEnd.addEventListener('input', saveTablePeriod);
+let recordedMone = {}, recordedStatus = 'loading', recordedGeneration = 0;
+function idKey(value) { return String(value || '').normalize('NFKC').replace(/[\s-]+/g, '').toLowerCase(); }
+function updateRecordedLabels() {
+  nameRows.querySelectorAll('.mone-recorded').forEach(label => {
+    const total = recordedMone[label.dataset.employeeId];
+    label.textContent = recordedStatus === 'loading' ? 'Recorded: …' : recordedStatus === 'error' ? 'Recorded: unavailable' : 'Recorded: ' + (total ? total[label.dataset.leaveType] : 0);
+  });
+}
+function loadRecordedMone() {
+  const generation = ++recordedGeneration, start = tableMoneStart.value, end = tableMoneEnd.value;
+  recordedMone = {}; recordedStatus = 'loading'; updateRecordedLabels();
+  if (!start || !end || end < start) { recordedStatus = 'error'; updateRecordedLabels(); return; }
+  google.script.run.withSuccessHandler(result => {
+    if (generation !== recordedGeneration) return;
+    recordedMone = result || {}; recordedStatus = 'ready'; updateRecordedLabels();
+  }).withFailureHandler(() => {
+    if (generation !== recordedGeneration) return;
+    recordedStatus = 'error'; updateRecordedLabels(); msg.textContent = 'Could not load recorded MONE totals. Please refresh and check MoneLog.';
+  }).getRecordedMone(session, start, end);
+}
+function changeTablePeriod() { saveTablePeriod(); loadRecordedMone(); }
+tableMoneStart.addEventListener('change', changeTablePeriod);
+tableMoneEnd.addEventListener('change', changeTablePeriod);
+if (anonymousMode || session) loadRecordedMone();
 function addMoneCells(person, row) {
   const enabled = person.selectable && person.vl != null && person.vl !== '' && person.sl != null && person.sl !== '';
   const draft = enabled ? readDraft(person.employeeId) : null;
@@ -209,7 +231,15 @@ function addMoneCells(person, row) {
     const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.step = '0.001';
     input.className = 'mone-input'; input.value = value == null ? '' : value; input.placeholder = '0';
     input.disabled = !enabled; input.setAttribute('aria-label', label + ' for ' + person.name);
-    cell.appendChild(input); row.appendChild(cell); return input;
+    cell.appendChild(input);
+    if (enabled) {
+      const recorded = document.createElement('span'); recorded.className = 'mone-recorded';
+      recorded.dataset.employeeId = idKey(person.employeeId); recorded.dataset.leaveType = label === 'MONE VL' ? 'vl' : 'sl';
+      const total = recordedMone[recorded.dataset.employeeId];
+      recorded.textContent = recordedStatus === 'loading' ? 'Recorded: …' : recordedStatus === 'error' ? 'Recorded: unavailable' : 'Recorded: ' + (total ? total[recorded.dataset.leaveType] : 0);
+      cell.appendChild(recorded);
+    }
+    row.appendChild(cell); return input;
   }
   const vl = amountCell('MONE VL', draft && draft.vl), sl = amountCell('MONE SL', draft && draft.sl);
   const cell = document.createElement('td'); cell.className = 'mone-action';
@@ -241,6 +271,7 @@ function addMoneCells(person, row) {
       vl.value = ''; sl.value = ''; requestId = ''; expectedVl = expectedSl = savedStart = savedEnd = null;
       button.disabled = vl.disabled = sl.disabled = false;
       msg.textContent = result.alreadyApplied ? 'MONE was already recorded for ' + result.name + '.' : 'MONE recorded for ' + result.name + '. The sheet was updated.';
+      loadRecordedMone();
     }).withFailureHandler(error => {
       button.disabled = vl.disabled = sl.disabled = false;
       msg.textContent = (error && error.message ? error.message : 'Could not confirm the update.') + ' Check MoneLog before making a new request.';
@@ -342,6 +373,7 @@ moneForm.addEventListener('submit', event => {
     } else {
       msg.textContent = 'MONE recorded for ' + result.name + '.';
     }
+    loadRecordedMone();
     google.script.run.withSuccessHandler(result => {
       personnel = result.items.map(person => ({...person, searchName: normalizedSearch(person.name)}));
       filterPersonnel();
