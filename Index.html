@@ -70,7 +70,7 @@ input,button,.sign{font-size:1rem}
 </style></head><body><main class="wrap"><div class="eyebrow">PERSONNEL SERVICES</div><h1>Leave Balance Lookup</h1><p>View the latest published leave balance for a personnel record.</p><p id="message" role="status"></p>
 <section id="signin" class="panel" hidden><h2>Authorized staff sign-in</h2><p>Sign in using your approved Google account to continue.</p><a id="auth" class="sign">Sign in with Google</a></section>
 <div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><details class="bulk-mone"><summary>Multiple search &amp; preview MONE</summary><p class="muted">Paste a numbered Word table, Excel rows or a pipe-separated table: optional number and rank, surname, first name, middle name, amount. Rank is shown for reference and does not verify identity. For unmatched names, select a suggested employee after checking the full name and employee number. The amount is the requested MONE total for the date range below. The preview keeps 5 VL and 5 SL, allocates SL first, and uses increments of 5. Preview does not save changes. Use Save eligible rows to record reviewed entries in the sheet.</p><label for="bulkMoneInput">Paste personnel rows</label><textarea id="bulkMoneInput" placeholder="1&#9;CO1&#9;Acero&#9;Jolina&#9;Lomotos&#9;10
-2&#9;CO1&#9;Rivera&#9;Charize Mae&#9;&#9;10"></textarea><div class="bulk-controls"><label for="bulkOffice">Office (for preview/export) <input id="bulkOffice" type="text" maxlength="150" placeholder="Enter office" autocomplete="off"></label><label for="bulkPasteFormat">Paste format <select id="bulkPasteFormat"><option value="auto">Auto-detect</option><option value="word">Word table: one cell per line</option></select></label><button id="bulkMonePreview" type="button">Preview MONE</button><button id="bulkMoneClear" type="button" class="quiet">Show all names</button><label for="bulkFontSize">Preview font <select id="bulkFontSize"><option value="10">10 pt</option><option value="12">12 pt</option><option value="14">14 pt</option><option value="16">16 pt</option><option value="18" selected>18 pt</option><option value="20">20 pt</option><option value="22">22 pt</option><option value="24">24 pt</option><option value="28">28 pt</option><option value="32">32 pt</option></select></label><button id="bulkMoneExport" type="button" disabled>Export preview to Excel</button><button id="bulkMoneSave" type="button" disabled>Save eligible rows to sheet</button><button id="bulkMoneResume" type="button" hidden>Resume interrupted save</button><button id="bulkMoneDiscard" type="button" class="quiet" hidden>Clear save queue</button></div><p id="bulkSaveStatus" class="bulk-status" role="status" aria-live="polite"></p><p id="bulkMoneStatus" class="bulk-status" role="status" aria-live="polite"></p><div class="bulk-output"><table id="bulkMoneResults" hidden><thead><tr><th>Input name</th><th>Matched employee</th><th>Current VL</th><th>Current SL</th><th>Requested</th><th>MONE VL</th><th>MONE SL</th><th>Preview VL</th><th>Preview SL</th><th>Status</th></tr></thead><tbody id="bulkMoneRows"></tbody></table></div></details><div class="table-mone-period"><label for="tableMoneStart">MONE start date<input type="date" id="tableMoneStart" value="2026-11-11"></label><label for="tableMoneEnd">MONE end date<input type="date" id="tableMoneEnd" value="2026-11-20"></label><span>MONE fields show the recorded total for these dates. Edit a value and save to adjust the balance; drafts stay in this browser.</span></div><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th><th scope="col">MONE VL</th><th scope="col">MONE SL</th><th scope="col">MONE</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
+2&#9;CO1&#9;Rivera&#9;Charize Mae&#9;&#9;10"></textarea><div class="bulk-controls"><label for="bulkOffice">Office (for preview/export) <input id="bulkOffice" type="text" maxlength="150" placeholder="Enter office" autocomplete="off"></label><label for="bulkPasteFormat">Paste format <select id="bulkPasteFormat"><option value="auto">Auto-detect</option><option value="word">Word table: one cell per line</option></select></label><button id="bulkMonePreview" type="button">Preview MONE</button><button id="bulkMoneClear" type="button" class="quiet">Show all names</button><label for="bulkFontSize">Preview font <select id="bulkFontSize"><option value="10">10 pt</option><option value="12">12 pt</option><option value="14">14 pt</option><option value="16">16 pt</option><option value="18" selected>18 pt</option><option value="20">20 pt</option><option value="22">22 pt</option><option value="24">24 pt</option><option value="28">28 pt</option><option value="32">32 pt</option></select></label><label for="bulkGroupAll">Personnel group <select id="bulkGroupAll"><option value="">Choose group</option><option value="Commissioned">Commissioned</option><option value="Non-commissioned">Non-commissioned</option><option value="Civilian">Civilian</option></select></label><button id="bulkApplyGroup" type="button" class="quiet">Apply group to all rows</button><button id="bulkReportSave" type="button" disabled>Save batch for reports</button><button id="bulkReportRetry" type="button" hidden>Retry batch save</button><button id="bulkReportClear" type="button" class="quiet" hidden>Clear pending batch</button><button id="bulkMoneExport" type="button" disabled>Export preview to Excel</button><button id="bulkMoneSave" type="button" disabled>Save eligible rows to sheet</button><button id="bulkMoneResume" type="button" hidden>Resume interrupted save</button><button id="bulkMoneDiscard" type="button" class="quiet" hidden>Clear save queue</button></div><p id="bulkReportStatus" class="bulk-status" role="status" aria-live="polite"></p><p id="bulkSaveStatus" class="bulk-status" role="status" aria-live="polite"></p><p id="bulkMoneStatus" class="bulk-status" role="status" aria-live="polite"></p><div class="bulk-output"><table id="bulkMoneResults" hidden><thead><tr><th>Input name</th><th>Personnel group</th><th>Matched employee</th><th>Current VL</th><th>Current SL</th><th>Requested</th><th>MONE VL</th><th>MONE SL</th><th>Preview VL</th><th>Preview SL</th><th>Status</th></tr></thead><tbody id="bulkMoneRows"></tbody></table></div></details><div class="table-mone-period"><label for="tableMoneStart">MONE start date<input type="date" id="tableMoneStart" value="2026-11-11"></label><label for="tableMoneEnd">MONE end date<input type="date" id="tableMoneEnd" value="2026-11-20"></label><span>MONE fields show the recorded total for these dates. Edit a value and save to adjust the balance; drafts stay in this browser.</span></div><div class="table-navigation"><div id="nameList" class="name-list" tabindex="0" role="region" aria-label="Matching personnel and leave balances"><table class="balance-table"><thead><tr><th scope="col">Name</th><th scope="col">VL</th><th scope="col">SL</th><th scope="col">FL</th><th scope="col">WL</th><th scope="col">SPL</th><th scope="col">MONE VL</th><th scope="col">MONE SL</th><th scope="col">MONE</th></tr></thead><tbody id="nameRows"></tbody></table></div><nav class="alphabet-index" aria-label="Jump to surname by letter"><div id="alphabetLetters" class="alphabet-letters"></div><div id="prefixPopup" class="prefix-popup" role="group" aria-label="Surname prefixes" hidden><button id="prefixClose" class="prefix-close" type="button" aria-label="Close surname prefixes">×</button><strong id="prefixTitle"></strong><div id="prefixOptions" class="prefix-options"></div></div></nav></div><form id="form"><label for="employeeId">Or enter employee number</label><input id="employeeId" autocomplete="off" required><button id="submit">View balance</button><button type="button" class="quiet" id="logout">Sign out</button></form></aside><div class="detail"><p id="selectPrompt">Search for and select a person to view their balance.</p><section id="result" hidden><div class="eyebrow">REMAINING LEAVE BALANCE</div><h2 id="employee"></h2><p id="period"></p><div class="grid"><div class="card"><div class="title">VACATION LEAVE</div><div class="value" id="vl">—</div><div class="code">VL</div></div><div class="card"><div class="title">SICK LEAVE</div><div class="value" id="sl">—</div><div class="code">SL</div></div><div class="card"><div class="title">FORCED LEAVE</div><div class="value" id="fl">—</div><div class="code">FL</div></div><div class="card"><div class="title">WELLNESS LEAVE</div><div class="value" id="wl">—</div><div class="code">WL</div></div><div class="card"><div class="title">SPECIAL PRIVILEGE LEAVE</div><div class="value" id="spl">—</div><div class="code">SPL</div></div></div><p class="muted" id="updated"></p><p class="muted">A dash means the balance is unavailable. Please contact personnel services for corrections.</p>
 <form id="moneForm" class="panel"><h3>Record MONE deduction</h3>
 <p>Deduct from the displayed web balances. Choose the MONE dates and enter the VL and/or SL deduction. The full amount is applied when saved; the snapshot date is unchanged.</p>
 <div class="mone-fields">
@@ -464,13 +464,13 @@ function applyBulkFont() {
 bulkFontSize.addEventListener('change', applyBulkFont);
 const bulkStatus = document.getElementById('bulkMoneStatus'), bulkRows = document.getElementById('bulkMoneRows'), bulkResults = document.getElementById('bulkMoneResults');
 applyBulkFont();
-let bulkHasPreview = false, bulkSelected = Object.create(null), bulkPreviewStale = true, bulkPreviewRows = [];
+let bulkHasPreview = false, bulkSelected = Object.create(null), bulkCategories = Object.create(null), bulkPreviewStale = true, bulkPreviewRows = [], reportBatchSaved = false;
 function markBulkStale() {
   bulkPreviewStale = true;
   if (bulkHasPreview) bulkStatus.textContent = 'Values may have changed. Click Preview MONE again to refresh this preview.';
-  syncBulkQueueButtons();
+  syncBulkQueueButtons(); syncReportButtons();
 }
-bulkInput.addEventListener('input', () => { bulkSelected = Object.create(null); markBulkStale(); });
+bulkInput.addEventListener('input', () => { bulkSelected = Object.create(null); bulkCategories = Object.create(null); markBulkStale(); });
 bulkPasteFormat.addEventListener('change', markBulkStale);
 tableMoneStart.addEventListener('change', markBulkStale); tableMoneEnd.addEventListener('change', markBulkStale);
 function renderBulkPreview() {
@@ -480,13 +480,21 @@ function renderBulkPreview() {
   const entries = parseBulkMone(bulkInput.value);
   if (!entries.length || entries.length > 500) { bulkStatus.textContent = 'Paste 1 to 500 rows.'; return; }
   const results = createBulkPreview(entries, personnel, recordedMone, bulkSelected);
-  bulkPreviewRows = results; bulkPreviewStale = false;
+  bulkPreviewRows = results; bulkPreviewStale = false; reportBatchSaved = false;
   bulkRows.replaceChildren();
   const ids = new Set();
   results.forEach(row => {
     const tr = document.createElement('tr');
     if (row.person && row.person.selectable) { ids.add(idKey(row.person.employeeId)); tr.dataset.employeeId = idKey(row.person.employeeId); }
     const nameCell = document.createElement('td'); nameCell.textContent = (row.entry.number ? row.entry.number + ' · ' : '') + (row.entry.rank ? row.entry.rank + ' · ' : '') + (row.entry.display || 'Row ' + row.entry.line); tr.appendChild(nameCell);
+    const groupCell = document.createElement('td'), group = document.createElement('select');
+    group.setAttribute('aria-label', 'Personnel group for ' + row.entry.display);
+    [['','Unclassified'],['Commissioned','Commissioned'],['Non-commissioned','Non-commissioned'],['Civilian','Civilian']].forEach(([value,label]) => {
+      const option = document.createElement('option'); option.value = value; option.textContent = label; group.appendChild(option);
+    });
+    group.value = bulkCategories[row.entry.line] || ''; row.category = group.value;
+    group.addEventListener('change', () => { bulkCategories[row.entry.line] = group.value; row.category = group.value; reportBatchSaved = false; syncReportButtons(); });
+    groupCell.appendChild(group); tr.appendChild(groupCell);
     const matchCell = document.createElement('td');
     if (row.suggestions && row.suggestions.length) {
       const select = document.createElement('select');
@@ -517,7 +525,7 @@ function renderBulkPreview() {
   const wordNotice = entries.some(entry => entry.wordReconstructed) ? 'Word table rebuilt from one cell per line — check every name and amount. ' : '';
   const failedWord = entries.length >= 6 && entries.every(entry => !entry.valid) && !/[\t|]/.test(bulkInput.value) ? 'Could not safely rebuild these Word cells; copy the complete numbered six-column table. ' : '';
   bulkStatus.textContent = wordNotice + failedWord + results.length + ' rows · ' + review + ' need review · ' + tableMoneStart.value + ' to ' + tableMoneEnd.value + '. Verify selected names and employee numbers. Preview has not been saved.';
-  syncBulkQueueButtons();
+  syncBulkQueueButtons(); syncReportButtons();
 }
 // Persist each request before sending it. The server uses request IDs to make
 // retries safe when a response is lost. Unreviewed rows never enter the queue.
@@ -627,10 +635,10 @@ function xmlText(value) {
 }
 function previewExcelRows(rows, start, end, office) {
   const output = [['MONE preview', 'Period: ' + start + ' to ' + end, 'Preview only; verify names and amounts.', 'Office: ' + (String(office || '').trim() || 'Not provided')],
-    ['Number','Rank','Input name','Matched employee','Employee number','Current VL','Current SL','Requested','MONE VL','MONE SL','Preview VL','Preview SL','Status']];
+    ['Number','Rank','Input name','Personnel group','Matched employee','Employee number','Current VL','Current SL','Requested','MONE VL','MONE SL','Preview VL','Preview SL','Status']];
   rows.forEach(row => {
     const person = row.person, shown = row.projected && row.suggestion;
-    output.push([row.entry.number || '', row.entry.rank || '', row.entry.display || '', person ? person.name : '', person ? String(person.employeeId || '') : '',
+    output.push([row.entry.number || '', row.entry.rank || '', row.entry.display || '', row.category || 'Unclassified', person ? person.name : '', person ? String(person.employeeId || '') : '',
       person && person.vl != null && person.vl !== '' && Number.isFinite(Number(person.vl)) ? Number(person.vl) : '',
       person && person.sl != null && person.sl !== '' && Number.isFinite(Number(person.sl)) ? Number(person.sl) : '',
       row.entry.valid ? Number(row.entry.amount) : row.entry.amount, shown ? row.suggestion.moneVl : '', shown ? row.suggestion.moneSl : '',
@@ -651,7 +659,7 @@ function makePreviewXlsx(rows) {
     ['_rels/.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
     ['xl/workbook.xml', '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="MONE Preview" sheetId="1" r:id="rId1"/></sheets></workbook>'],
     ['xl/_rels/workbook.xml.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'],
-    ['xl/worksheets/sheet1.xml', '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="2" topLeftCell="A3" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="2" width="12" customWidth="1"/><col min="3" max="4" width="32" customWidth="1"/><col min="5" max="12" width="16" customWidth="1"/><col min="13" max="13" width="48" customWidth="1"/></cols><sheetData>' + xmlRows + '</sheetData></worksheet>']
+    ['xl/worksheets/sheet1.xml', '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="2" topLeftCell="A3" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="2" width="12" customWidth="1"/><col min="3" max="5" width="28" customWidth="1"/><col min="6" max="13" width="16" customWidth="1"/><col min="14" max="14" width="48" customWidth="1"/></cols><sheetData>' + xmlRows + '</sheetData></worksheet>']
   ];
   const chunks = [], central = []; let offset = 0;
   function buffer(size) { const bytes = new Uint8Array(size); return [bytes, new DataView(bytes.buffer)]; }
@@ -678,6 +686,72 @@ bulkExport.addEventListener('click', () => {
     bulkSaveStatus.textContent = 'Excel preview downloaded. No changes were saved to the sheet.';
   } catch (_) { bulkSaveStatus.textContent = 'Could not create the Excel file. Please try again.'; }
 });
+// The report batch is a snapshot of every pasted row; it does not apply MONE.
+const REPORT_QUEUE_KEY = 'leavechecker:mone-report-pending:v1';
+const reportSave = document.getElementById('bulkReportSave'), reportRetry = document.getElementById('bulkReportRetry'), reportClear = document.getElementById('bulkReportClear'), reportStatus = document.getElementById('bulkReportStatus');
+let reportPending = null, reportBusy = false, reportQueueError = '';
+try { const raw = localStorage.getItem(REPORT_QUEUE_KEY); if (raw) { reportPending = JSON.parse(raw); if (!reportPending || !reportPending.batchId || !Array.isArray(reportPending.rows)) throw Error('Invalid pending batch'); } }
+catch (_) { reportQueueError = 'Cannot read pending batch from browser storage; check the report sheet before creating another.'; }
+function syncReportButtons() {
+  reportSave.disabled = reportBusy || !!reportPending || !!reportQueueError || bulkPreviewStale || !bulkHasPreview || !bulkPreviewRows.length || reportBatchSaved;
+  reportRetry.hidden = reportClear.hidden = !reportPending; reportRetry.disabled = reportClear.disabled = reportBusy;
+}
+function reportTag(row) {
+  if (!row.entry.valid) return 'INVALID_INPUT';
+  if (!row.person) return 'NAME_REVIEW';
+  if (row.status.includes('more than once')) return 'DUPLICATE';
+  if (row.status.includes('missing or duplicated')) return 'EMPLOYEE_ID_REVIEW';
+  if (row.status.includes('balance unavailable')) return 'BALANCE_UNAVAILABLE';
+  if (row.status.includes('below 5')) return 'INSUFFICIENT_BALANCE';
+  if (row.status.includes('Reduced')) return Number(row.entry.amount) % 5 === 0 ? 'INSUFFICIENT_BALANCE' : 'REQUEST_ADJUSTED';
+  return row.status === 'Preview only' ? 'READY' : 'NEEDS_REVIEW';
+}
+function makeReportBatch(rows, office, startDate, endDate, batchId) {
+  return {batchId, office:office.trim(), startDate, endDate, rows:rows.map(row => {
+    const person = row.person, shown = row.projected && row.suggestion;
+    return {number:row.entry.number || '', rank:row.entry.rank || '', inputName:row.entry.display || '',
+      matchedName:person ? person.name : '', employeeId:person ? String(person.employeeId || '') : '',
+      category:row.category || 'Unclassified', requested:row.entry.amount || '', currentVl:person && person.vl != null ? String(person.vl) : '',
+      currentSl:person && person.sl != null ? String(person.sl) : '', moneVl:shown ? row.suggestion.moneVl : '', moneSl:shown ? row.suggestion.moneSl : '',
+      previewVl:row.projected ? row.projected.vl : '', previewSl:row.projected ? row.projected.sl : '', tag:reportTag(row),
+      manuallySelected:!!row.manuallySelected, detail:row.status};
+  })};
+}
+async function sendReportBatch() {
+  if (!reportPending || reportBusy) return;
+  reportBusy = true; syncReportButtons(); reportStatus.textContent = 'Saving batch details…';
+  try {
+    const result = await new Promise((resolve,reject) => google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).saveMoneReportBatch(session, reportPending));
+    try { localStorage.removeItem(REPORT_QUEUE_KEY); } catch (_) { throw Error('Batch saved but browser storage could not be cleared; retry is safe.'); }
+    reportPending = null; reportBatchSaved = true;
+    reportStatus.textContent = 'Report batch saved: ' + result.batchId + ' · ' + result.rowCount + ' rows. No MONE deductions were applied by this button.';
+  } catch (error) { reportStatus.textContent = 'Batch save not confirmed: ' + (error && error.message ? error.message : 'connection error') + '. Retry with the same batch ID.'; }
+  reportBusy = false; syncReportButtons();
+}
+reportSave.addEventListener('click', () => {
+  if (reportBusy || reportPending || reportQueueError || bulkPreviewStale || !bulkPreviewRows.length) return;
+  const office = bulkOffice.value.trim(); if (!office) { reportStatus.textContent = 'Enter the office before saving a report batch.'; bulkOffice.focus(); return; }
+  const unclassified = bulkPreviewRows.filter(row => !row.category).length;
+  if (!window.confirm('Save ' + bulkPreviewRows.length + ' preview rows for ' + office + '? ' + unclassified + ' are unclassified. This saves report data only and does not apply MONE deductions.')) return;
+  const id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(36).slice(2) + '-' + Math.random().toString(36).slice(2);
+  const batch = makeReportBatch(bulkPreviewRows, office, tableMoneStart.value, tableMoneEnd.value, id);
+  try { localStorage.setItem(REPORT_QUEUE_KEY, JSON.stringify(batch)); } catch (_) { reportStatus.textContent = 'Cannot store recovery data in this browser. The batch was not sent.'; return; }
+  reportPending = batch; sendReportBatch();
+});
+reportRetry.addEventListener('click', () => { if (reportPending) sendReportBatch(); });
+reportClear.addEventListener('click', () => {
+  if (reportBusy || !reportPending || !window.confirm('Check MoneBatchData first. Clear the pending batch from this browser? Any batch already saved will remain in the sheet.')) return;
+  try { localStorage.removeItem(REPORT_QUEUE_KEY); reportPending = null; reportStatus.textContent = 'Pending batch cleared.'; } catch (_) { reportStatus.textContent = 'Could not clear pending batch.'; }
+  syncReportButtons();
+});
+document.getElementById('bulkApplyGroup').addEventListener('click', () => {
+  const group = document.getElementById('bulkGroupAll').value;
+  if (!group || !bulkHasPreview || bulkPreviewStale) { reportStatus.textContent = 'Preview the list and choose a personnel group first.'; return; }
+  bulkPreviewRows.forEach(row => { bulkCategories[row.entry.line] = group; }); renderBulkPreview();
+});
+if (reportQueueError) reportStatus.textContent = reportQueueError;
+else if (reportPending) reportStatus.textContent = 'A batch save is pending. Retry or check the report sheet before clearing it.';
+syncReportButtons();
 document.getElementById('bulkMonePreview').addEventListener('click', renderBulkPreview);
 document.getElementById('bulkMoneClear').addEventListener('click', () => { bulkFilterIds = null; filterPersonnel(); bulkStatus.textContent = 'Showing all names. Preview results remain above.'; });
 nameList.addEventListener('scroll', () => {
