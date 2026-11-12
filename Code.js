@@ -303,3 +303,58 @@ function getRecordedMone(session, startDate, endDate) {
   Object.keys(totals).forEach(id => { totals[id].vl /= 1000; totals[id].sl /= 1000; });
   return totals;
 }
+
+
+/** Save a report-only snapshot of all pasted rows; never updates leave balances. */
+function saveMoneReportBatch(session, input) {
+  const config = authorizedConfig_(session);
+  input = input || {};
+  const batchId = String(input.batchId || ''), office = String(input.office || '').trim();
+  const start = String(input.startDate || ''), end = String(input.endDate || ''), rows = input.rows;
+  function dateOk(v) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+    const d = new Date(v + 'T00:00:00Z');
+    return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+  }
+  if (!/^[a-zA-Z0-9-]{16,100}$/.test(batchId) || !office || office.length > 150 || !dateOk(start) || !dateOk(end) || start > end || !Array.isArray(rows) || !rows.length || rows.length > 500) throw Error('Enter an office, a valid date range, and 1 to 500 preview rows.');
+  const fields = ['number','rank','inputName','matchedName','employeeId','category','requested','currentVl','currentSl','moneVl','moneSl','previewVl','previewSl','tag','manuallySelected','detail'];
+  const tags = ['READY','INVALID_INPUT','NAME_REVIEW','DUPLICATE','EMPLOYEE_ID_REVIEW','BALANCE_UNAVAILABLE','INSUFFICIENT_BALANCE','REQUEST_ADJUSTED','NEEDS_REVIEW'];
+  const groups = ['Commissioned','Non-commissioned','Civilian','Unclassified'];
+  const cleanRows = rows.map(row => {
+    if (!row || typeof row !== 'object' || !groups.includes(row.category) || !tags.includes(row.tag)) throw Error('Invalid personnel group or review tag. Refresh the preview.');
+    const output = {};
+    fields.forEach(key => {
+      const value = key === 'manuallySelected' ? (row[key] === true ? 'YES' : 'NO') : String(row[key] == null ? '' : row[key]);
+      if (value.length > 500) throw Error('A report field is too long.');
+      output[key] = value;
+    });
+    return output;
+  });
+  const canonical = JSON.stringify({office,start,end,rows:cleanRows});
+  const fingerprint = Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, canonical, Utilities.Charset.UTF_8));
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const book = SpreadsheetApp.openById(config.spreadsheet);
+    let sheet = book.getSheetByName('MoneBatchData');
+    const headers = ['batch_id','fingerprint','saved_at','office','start_date','end_date'].concat(fields);
+    if (!sheet) sheet = book.insertSheet('MoneBatchData');
+    if (sheet.getMaxColumns() < headers.length) sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
+    if (!sheet.getLastRow()) sheet.getRange(1,1,1,headers.length).setValues([headers]);
+    const values = sheet.getDataRange().getValues();
+    if (headers.some((value,index) => String((values[0] || [])[index] || '').trim() !== value)) throw Error('MoneBatchData headers do not match. Review the sheet.');
+    const prior = values.slice(1).filter(row => String(row[0]) === batchId);
+    if (prior.length) {
+      if (prior.length !== cleanRows.length || prior.some(row => String(row[1]) !== fingerprint)) throw Error('Batch ID already exists with different or incomplete data. Review MoneBatchData.');
+      return {batchId,rowCount:prior.length,alreadySaved:true};
+    }
+    // Sheets can interpret leading = as a formula. Keep all imported data as text.
+    const safe = value => /^[\s]*[=+\-@]/.test(String(value)) ? "'" + String(value) : value;
+    const stamp = new Date();
+    const output = cleanRows.map(row => [batchId,fingerprint,stamp,safe(office),start,end].concat(fields.map(key => safe(row[key]))));
+    const finalRow = sheet.getLastRow() + output.length;
+    if (finalRow > sheet.getMaxRows()) sheet.insertRowsAfter(sheet.getMaxRows(), finalRow - sheet.getMaxRows());
+    sheet.getRange(sheet.getLastRow()+1,1,output.length,headers.length).setValues(output);
+    SpreadsheetApp.flush();
+    return {batchId,rowCount:output.length,alreadySaved:false};
+  } finally { lock.releaseLock(); }
+}
