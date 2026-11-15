@@ -430,3 +430,61 @@ function parseMoneAttachment(session, fileName, base64) {
   if (found.length > 500) throw Error('This file contains more than 500 personnel rows. Split it into smaller batches.');
   return {fileName, rows:found, count:found.length, missingAmounts:found.filter(row => !row[5]).length};
 }
+
+// Imported batches are stored in the existing spreadsheet, not in browser storage.
+function moneReviewSheet_(config) {
+  const book = SpreadsheetApp.openById(config.spreadsheet);
+  let sheet = book.getSheetByName('MoneReviewQueue');
+  const headers = ['batch_id','file_name','created_at','status','rows_json'];
+  if (!sheet) sheet = book.insertSheet('MoneReviewQueue');
+  if (!sheet.getLastRow()) sheet.getRange(1,1,1,headers.length).setValues([headers]);
+  const actual = sheet.getRange(1,1,1,headers.length).getValues()[0];
+  if (headers.some((h,i) => actual[i] !== h)) throw Error('MoneReviewQueue headers do not match.');
+  return sheet;
+}
+function saveMoneReviewImport(session, batchId, fileName, rows) {
+  const config = authorizedConfig_(session);
+  batchId = String(batchId || ''); fileName = String(fileName || '').trim();
+  if (!/^[a-zA-Z0-9-]{16,100}$/.test(batchId) || !fileName || fileName.length > 250 || !Array.isArray(rows) || !rows.length || rows.length > 500 || rows.some(row => !Array.isArray(row) || row.length !== 7 || row.some(v => typeof v !== 'string' || v.length > 1000))) throw Error('Invalid imported batch.');
+  const json = JSON.stringify(rows);
+  if (json.length > 45000) throw Error('This batch is too large for the review queue. Split the file into smaller batches.');
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const sheet = moneReviewSheet_(config), values = sheet.getDataRange().getValues();
+    const existing = values.slice(1).find(row => String(row[0]) === batchId);
+    if (existing) {
+      if (String(existing[4]) !== json) throw Error('Batch ID already exists with different data.');
+      return {batchId, alreadySaved:true};
+    }
+    // Prefix potentially formula-like filenames. JSON always begins with '['.
+    const safeName = /^[\s]*[=+\-@]/.test(fileName) ? "'" + fileName : fileName;
+    sheet.appendRow([batchId,safeName,new Date(),'PENDING',json]);
+    return {batchId,alreadySaved:false};
+  } finally { lock.releaseLock(); }
+}
+function listMoneReviewImports(session) {
+  const config = authorizedConfig_(session), sheet = SpreadsheetApp.openById(config.spreadsheet).getSheetByName('MoneReviewQueue');
+  if (!sheet) return [];
+  const values = sheet.getDataRange().getValues(), expected = ['batch_id','file_name','created_at','status','rows_json'];
+  if (expected.some((h,i) => (values[0] || [])[i] !== h)) throw Error('MoneReviewQueue headers do not match.');
+  return values.slice(1).reverse().filter(row => row[0] && row[3] === 'PENDING').map(row => ({batchId:String(row[0]),fileName:String(row[1]),createdAt:row[2] instanceof Date ? row[2].toISOString() : String(row[2] || '')}));
+}
+function loadMoneReviewImport(session, batchId) {
+  const config = authorizedConfig_(session), sheet = SpreadsheetApp.openById(config.spreadsheet).getSheetByName('MoneReviewQueue');
+  if (!sheet) throw Error('Review queue is empty.');
+  const rows = sheet.getDataRange().getValues(), match = rows.slice(1).find(row => String(row[0]) === String(batchId));
+  if (!match || match[3] !== 'PENDING') throw Error('Batch is unavailable or already reviewed.');
+  const data = JSON.parse(String(match[4]));
+  return {batchId:String(match[0]),fileName:String(match[1]),rows:data};
+}
+function markMoneReviewImportReviewed(session, batchId) {
+  const config = authorizedConfig_(session), lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const sheet = SpreadsheetApp.openById(config.spreadsheet).getSheetByName('MoneReviewQueue');
+    if (!sheet) throw Error('Review queue is empty.');
+    const values = sheet.getDataRange().getValues(), index = values.findIndex((row,i) => i > 0 && String(row[0]) === String(batchId));
+    if (index < 0) throw Error('Batch not found.');
+    sheet.getRange(index + 1,4).setValue('REVIEWED');
+    return {batchId:String(batchId)};
+  } finally { lock.releaseLock(); }
+}
