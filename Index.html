@@ -133,6 +133,13 @@ input,button,.sign{font-size:1rem}
 .bulk-output table.mone-credit-table th:first-child{text-align:left}
 .bulk-output table.mone-credit-table td::before{content:none}
 @media(max-width:700px){.bulk-output table#bulkMoneResults{min-width:0}.bulk-output tbody tr > td.mone-calculation{grid-column:1 / -1;min-width:0}.mone-preview-page .bulk-output table#bulkMoneResults{min-width:0}.mone-amounts{justify-content:space-between}.bulk-output table.mone-credit-table{font-size:.72em}}
+
+/* Keep every credit-table cell equally readable on phones and desktop. */
+.bulk-output table.mone-credit-table{font-size:clamp(14px, 4vw, 20px)}
+.bulk-output table.mone-credit-table th,.bulk-output table.mone-credit-table td{font-size:inherit!important;line-height:1.3;word-break:normal;overflow-wrap:normal;padding:7px 5px}
+.bulk-output table.mone-credit-table th:first-child{width:42%}
+.bulk-output .mone-amounts span,.bulk-output .mone-amounts strong{font-size:1rem}
+@media(max-width:700px){.bulk-output table.mone-credit-table{font-size:clamp(14px, 4vw, 18px)}}
 </style></head><body><main class="wrap"><div class="eyebrow">PERSONNEL SERVICES</div><h1>Leave Balance Lookup</h1><p>View the latest published leave balance for a personnel record.</p><p id="message" role="status"></p>
 <section id="signin" class="panel" hidden><h2>Authorized staff sign-in</h2><p>Sign in using your approved Google account to continue.</p><a id="auth" class="sign">Sign in with Google</a></section>
 <div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><details class="bulk-mone"><summary>Multiple search &amp; preview MONE</summary><p class="muted">Paste a numbered Word table, Excel rows or a pipe-separated table: optional number and rank, surname, first name, middle name, amount. Rank is shown for reference and does not verify identity. For unmatched names, select a suggested employee after checking the full name and employee number. The amount is the requested MONE total for the date range below. The preview keeps 5 VL and 5 SL, allocates SL first, and uses increments of 5. Preview does not save changes. Use Save eligible rows to record reviewed entries in the sheet.</p><label for="bulkMoneFile">Import a Word or Excel attachment (.docx or .xlsx, up to 3 MB)</label><input id="bulkMoneFile" type="file" accept=".docx,.xlsx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><p id="bulkImportStatus" class="muted" role="status" aria-live="polite">Choose a DOCX or XLSX from your device or Google Drive. Import prepares a preview; nothing is deducted.</p><div class="bulk-controls"><label for="driveMoneFiles">Files in MONE Drive folder <select id="driveMoneFiles"><option value="">Refresh to list folder files</option></select></label><button type="button" id="driveMoneRefresh" class="quiet">Refresh Drive folder</button><button type="button" id="driveMoneImport"><span id="driveImportSpinner" class="import-spinner" aria-hidden="true" hidden></span><span id="driveImportLabel">Import selected file</span></button><button type="button" id="driveMoneReviewed" class="quiet">Mark Drive file reviewed</button></div><p id="driveMoneStatus" class="muted" role="status" aria-live="polite">Put DOCX or XLSX files in the configured Drive folder, then refresh. Each file is reviewed separately. Access follows the app's current access setting.</p><div class="bulk-controls"><label for="moneReviewList">Pending file reviews <select id="moneReviewList"><option value="">Select a pending import</option></select></label><button type="button" id="moneReviewRefresh" class="quiet">Refresh pending</button><button type="button" id="moneReviewOpen" class="quiet">Open batch</button><button type="button" id="moneReviewDone" class="quiet">Mark reviewed</button><button type="button" id="moneReviewRetry" class="quiet" hidden>Retry queue save</button></div><p id="moneReviewStatus" class="muted" role="status" aria-live="polite">The queue stores the original imported rows across devices. Changes made in the preview are not saved to this queue.</p><label for="bulkMoneInput">Paste or review personnel rows</label><textarea id="bulkMoneInput" placeholder="1&#9;CO1&#9;Acero&#9;Jolina&#9;Lomotos&#9;10
@@ -266,6 +273,7 @@ function saveTablePeriod() {
   try { localStorage.setItem('leavechecker:mone-period:v1', JSON.stringify({startDate:tableMoneStart.value,endDate:tableMoneEnd.value})); } catch (_) { msg.textContent = 'Could not save the dates in this browser.'; }
 }
 let recordedMone = {}, recordedStatus = 'loading', recordedGeneration = 0;
+let autoDrivePreviewPending = false;
 function idKey(value) { return String(value || '').normalize('NFKC').replace(/[\s-]+/g, '').toLowerCase(); }
 // Editable totals use their own cache so older additional-deduction drafts are never mistaken for totals.
 const totalDrafts = Object.create(null);
@@ -279,10 +287,10 @@ function loadRecordedMone() {
   if (!start || !end || end < start) { recordedStatus = 'error'; if (personnel) filterPersonnel(); return; }
   google.script.run.withSuccessHandler(result => {
     if (generation !== recordedGeneration) return;
-    recordedMone = result || {}; recordedStatus = 'ready'; if (personnel) filterPersonnel();
+    recordedMone = result || {}; recordedStatus = 'ready'; if (personnel) filterPersonnel(); tryAutoDrivePreview();
   }).withFailureHandler(() => {
     if (generation !== recordedGeneration) return;
-    recordedStatus = 'error'; if (personnel) filterPersonnel(); msg.textContent = 'Could not load MONE totals. Refresh and check MoneLog.';
+    recordedStatus = 'error'; if (personnel) filterPersonnel(); msg.textContent = 'Could not load MONE totals. Refresh and check MoneLog.'; if (autoDrivePreviewPending) { autoDrivePreviewPending = false; driveStatus.textContent = 'File loaded, but MONE totals could not be loaded. Refresh and try again.'; }
   }).getRecordedMone(session, start, end);
 }
 function changeTablePeriod() { saveTablePeriod(); loadRecordedMone(); }
@@ -537,7 +545,7 @@ function markBulkStale() {
   if (bulkHasPreview) bulkStatus.textContent = 'Values may have changed. Click Preview MONE again to refresh this preview.';
   syncBulkQueueButtons(); syncReportButtons();
 }
-bulkInput.addEventListener('input', () => { bulkImportSource = ''; bulkSelected = Object.create(null); bulkCategories = Object.create(null); markBulkStale(); });
+bulkInput.addEventListener('input', () => { autoDrivePreviewPending = false; bulkImportSource = ''; bulkSelected = Object.create(null); bulkCategories = Object.create(null); markBulkStale(); });
 bulkPasteFormat.addEventListener('change', markBulkStale);
 const bulkFile = document.getElementById('bulkMoneFile'), bulkImportStatus = document.getElementById('bulkImportStatus');
 const driveFiles = document.getElementById('driveMoneFiles'), driveStatus = document.getElementById('driveMoneStatus');
@@ -576,19 +584,22 @@ async function refreshMoneDriveFolder() {
   } catch (error) { driveStatus.textContent = 'Drive folder unavailable: ' + (error && error.message || 'connection error'); }
 }
 document.getElementById('driveMoneRefresh').addEventListener('click', refreshMoneDriveFolder);
-document.getElementById('driveMoneImport').addEventListener('click', async () => {
+async function importSelectedDriveFile() {
   const item = driveMoneItems.find(x => x.id === driveFiles.value);
   if (!item) { driveStatus.textContent = 'Select a file from the Drive folder first.'; return; }
-  if (bulkInput.value.trim() && !window.confirm('Replace the current batch entry with ' + item.name + '?')) return;
-  const button = document.getElementById('driveMoneImport'), spinner = document.getElementById('driveImportSpinner'), label = document.getElementById('driveImportLabel'); button.disabled = true; button.setAttribute('aria-busy', 'true'); spinner.hidden = false; label.textContent = 'Importing…'; driveStatus.textContent = 'Importing ' + item.name + '…';
+  if (bulkInput.value.trim() && !window.confirm('Replace the current batch entry with ' + item.name + '?')) { driveFiles.value = ''; return; }
+  const button = document.getElementById('driveMoneImport'), spinner = document.getElementById('driveImportSpinner'), label = document.getElementById('driveImportLabel'); button.disabled = true; driveFiles.disabled = true; button.setAttribute('aria-busy', 'true'); spinner.hidden = false; label.textContent = 'Importing…'; driveStatus.textContent = 'Importing ' + item.name + '…';
   try {
     const imported = await reviewCall('importMoneDriveFile',item.id,item.modified);
     bulkInput.value = imported.rows.map(row => row.join('\t')).join('\n'); bulkPasteFormat.value = 'auto'; bulkInput.dispatchEvent(new Event('input',{bubbles:true})); bulkImportSource = imported.fileName;
-    renderBulkPreview();
-    driveStatus.textContent = 'Loaded ' + imported.count + ' rows from ' + imported.fileName + '. ' + (imported.missingAmounts ? imported.missingAmounts + ' rows need an amount. ' : '') + 'Review names and amounts; no deductions have been saved.';
+    autoDrivePreviewPending = true;
+    driveStatus.textContent = 'Loaded ' + imported.count + ' rows from ' + imported.fileName + '. ' + (imported.missingAmounts ? imported.missingAmounts + ' rows need an amount. ' : '') + 'Preparing preview…';
+    tryAutoDrivePreview();
   } catch (error) { driveStatus.textContent = 'Could not import: ' + (error && error.message || 'connection error'); }
-  finally { button.disabled = false; button.removeAttribute('aria-busy'); spinner.hidden = true; label.textContent = 'Import selected file'; }
-});
+  finally { button.disabled = false; driveFiles.disabled = false; button.removeAttribute('aria-busy'); spinner.hidden = true; label.textContent = 'Import selected file'; }
+}
+document.getElementById('driveMoneImport').addEventListener('click', importSelectedDriveFile);
+driveFiles.addEventListener('change', () => { if (driveFiles.value) importSelectedDriveFile(); });
 document.getElementById('driveMoneReviewed').addEventListener('click', async () => {
   const item = driveMoneItems.find(x => x.id === driveFiles.value);
   if (!item) { driveStatus.textContent = 'Select a Drive file first.'; return; }
@@ -948,6 +959,15 @@ else if (reportPending) reportStatus.textContent = 'A batch save is pending. Ret
 syncReportButtons();
 const monePreviewPage = document.getElementById('monePreviewPage'), monePreviewContent = document.getElementById('monePreviewContent'), previewOpen = document.getElementById('bulkPreviewOpen'), previewClose = document.getElementById('bulkPreviewClose');
 const bulkOutput = bulkResults.parentElement;
+function tryAutoDrivePreview() {
+  if (!autoDrivePreviewPending) return;
+  if (!personnel || recordedStatus === 'loading') { driveStatus.textContent = 'File loaded. Waiting for personnel and MONE balances…'; return; }
+  if (recordedStatus !== 'ready') { autoDrivePreviewPending = false; driveStatus.textContent = 'File loaded, but MONE totals are unavailable. Check the dates and try Preview MONE.'; return; }
+  autoDrivePreviewPending = false;
+  renderBulkPreview();
+  if (!bulkPreviewStale && bulkHasPreview) { driveStatus.textContent = 'File loaded. Review the preview before saving.'; openMonePreview(); }
+  else driveStatus.textContent = 'File loaded, but the preview needs attention: ' + bulkStatus.textContent;
+}
 function openMonePreview() {
   if (!bulkHasPreview || bulkPreviewStale) { bulkStatus.textContent = 'Click Preview MONE first to prepare the current batch.'; return; }
   monePreviewPage.hidden = false;
@@ -973,11 +993,12 @@ nameList.addEventListener('scroll', () => {
   if (rendered < matches.length && nameList.scrollTop + nameList.clientHeight >= nameList.scrollHeight - 150) appendPersonnelBatch();
 });
 if (anonymousMode || session) {
+  refreshMoneDriveFolder();
   google.script.run.withSuccessHandler(result => {
     personnel = result.items.map(person => ({...person, searchName: normalizedSearch(person.name)}));
-    filterPersonnel();
+    filterPersonnel(); tryAutoDrivePreview();
   }).withFailureHandler(() => {
-    searchStatus.textContent = 'Could not load personnel. Sign in again or contact the administrator.';
+    searchStatus.textContent = 'Could not load personnel. Sign in again or contact the administrator.'; if (autoDrivePreviewPending) { autoDrivePreviewPending = false; driveStatus.textContent = 'File loaded, but personnel could not be loaded. Refresh and try again.'; }
   }).searchPersonnel(session, '');
 }
 
