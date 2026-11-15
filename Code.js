@@ -358,3 +358,75 @@ function saveMoneReportBatch(session, input) {
     return {batchId,rowCount:output.length,alreadySaved:false};
   } finally { lock.releaseLock(); }
 }
+
+
+/** Read user-selected DOCX/XLSX table data into the existing MONE preview. */
+function parseMoneAttachment(session, fileName, base64) {
+  authorizedConfig_(session);
+  fileName = String(fileName || '').trim(); base64 = String(base64 || '');
+  const type = /\.(docx|xlsx)$/i.exec(fileName);
+  if (!type || !base64 || base64.length > 4 * 1024 * 1024 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) throw Error('Choose a DOCX or XLSX file no larger than 3 MB.');
+  let entries;
+  try { entries = Utilities.unzip(Utilities.newBlob(Utilities.base64Decode(base64), 'application/zip', fileName)); }
+  catch (_) { throw Error('The file could not be opened. Check that it is an unencrypted DOCX or XLSX file.'); }
+  if (entries.length > 1000) throw Error('The file has too many parts to import.');
+  const parts = Object.create(null); let totalBytes = 0;
+  entries.forEach(part => { totalBytes += part.getBytes().length; parts[part.getName()] = part; });
+  if (totalBytes > 20 * 1024 * 1024) throw Error('The file is too large after decompression.');
+  const child = (element, name) => element.getChildren().filter(node => node.getName() === name);
+  const descendants = (element, name) => {
+    const result = [];
+    function visit(node) { node.getChildren().forEach(item => { if (item.getName() === name) result.push(item); visit(item); }); }
+    visit(element); return result;
+  };
+  const attribute = (element, name) => { const attr = element.getAttributes().find(item => item.getName() === name); return attr ? attr.getValue() : ''; };
+  const text = element => descendants(element, 't').map(node => node.getValue()).join('');
+  const readXml = part => { try { return XmlService.parse(part.getDataAsString('UTF-8')).getRootElement(); } catch (_) { throw Error('The file contains XML that could not be read.'); } };
+  let tables = [];
+  if (type[1].toLowerCase() === 'docx') {
+    if (!parts['word/document.xml']) throw Error('The Word document has no readable document content.');
+    const root = readXml(parts['word/document.xml']);
+    tables = descendants(root, 'tbl').map(table => child(table, 'tr').map(row => {
+      const result = [];
+      child(row, 'tc').forEach(cell => {
+        const value = text(cell).replace(/\s+/g, ' ').trim();
+        const properties = child(cell, 'tcPr')[0], spanNode = properties && child(properties, 'gridSpan')[0];
+        const span = spanNode ? Number(attribute(spanNode, 'val')) : 1;
+        if (!Number.isInteger(span) || span < 1 || span > 50) throw Error('The Word table has an unsupported merged cell.');
+        for (let i = 0; i < span; i++) result.push(value);
+      });
+      return result;
+    }));
+  } else {
+    const shared = parts['xl/sharedStrings.xml'] ? child(readXml(parts['xl/sharedStrings.xml']), 'si').map(text) : [];
+    const sheets = Object.keys(parts).filter(name => /^xl\/worksheets\/sheet\d+\.xml$/.test(name)).sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
+    if (!sheets.length) throw Error('The Excel file has no readable worksheets.');
+    tables = sheets.map(name => descendants(readXml(parts[name]), 'row').map(row => {
+      const values = [];
+      child(row, 'c').forEach(cell => {
+        const ref = attribute(cell, 'r'), letters = /^[A-Z]+/i.exec(ref);
+        if (!letters) return;
+        let index = 0;
+        for (const letter of letters[0].toUpperCase()) index = index * 26 + letter.charCodeAt(0) - 64;
+        if (index < 1 || index > 100) return;
+        const kind = attribute(cell, 't'), valueNode = child(cell, 'v')[0];
+        let value = kind === 'inlineStr' ? text(cell) : valueNode ? valueNode.getValue() : '';
+        if (kind === 's') value = shared[Number(value)] == null ? '' : shared[Number(value)];
+        values[index - 1] = String(value || '').replace(/\s+/g, ' ').trim();
+      });
+      return values;
+    }));
+  }
+  const found = [];
+  tables.forEach(table => table.forEach(row => {
+    for (let i = 0; i <= Math.min(9, row.length - 1); i++) {
+      const serial = String(row[i] || '').trim(), rank = String(row[i+1] || '').trim();
+      if (!/^\d+\.?$/.test(serial) || !/^[a-z][a-z0-9 .\/-]{1,24}$/i.test(rank) || !/[a-z]/i.test(rank) || !String(row[i+2] || '').trim() || !String(row[i+3] || '').trim()) continue;
+      found.push(Array.from({length:7}, (_, column) => String(row[i+column] == null ? '' : row[i+column]).replace(/[\t\r\n]+/g, ' ').trim()));
+      break;
+    }
+  }));
+  if (!found.length) throw Error('No numbered personnel rows were found. Check the table format.');
+  if (found.length > 500) throw Error('This file contains more than 500 personnel rows. Split it into smaller batches.');
+  return {fileName, rows:found, count:found.length, missingAmounts:found.filter(row => !row[5]).length};
+}
