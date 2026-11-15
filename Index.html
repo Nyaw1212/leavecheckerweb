@@ -65,6 +65,49 @@ input,button,.sign{font-size:1rem}
 @media(max-width:900px){.inline-mone .mone-fields{grid-template-columns:repeat(2,minmax(120px,1fr))}}
 .table-mone-period{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:12px 0}.table-mone-period label{font-size:.9rem}.table-mone-period input{width:auto;margin-top:4px;padding:8px}.table-mone-period span{font-size:.8rem;color:#b9c6d4}.balance-table{min-width:1450px}.balance-table .mone-input{width:125px;min-width:90px;margin:0;padding:8px;font-size:1.4rem;text-align:right}.balance-table .mone-open{font-size:.9rem}.balance-table td.mone-input-cell{padding:8px 4px}.mone-recorded{display:block;color:#b9c6d4;font-size:.75rem;white-space:nowrap;margin-top:4px}
 .bulk-mone{margin:14px 0;border:1px solid #695d46;border-radius:10px;padding:12px;background:#182334}.bulk-mone summary{cursor:pointer;color:#dec285;font-weight:700;font-size:1rem}.bulk-mone textarea{box-sizing:border-box;width:100%;min-height:135px;padding:10px;background:#101621;color:#fff;border:1px solid #516175;border-radius:8px;font:1rem system-ui;resize:vertical}.bulk-mone select{background:#101621;color:#fff;border:1px solid #516175;border-radius:8px;padding:9px;font-size:1rem}.bulk-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.bulk-controls button{margin:0;padding:10px 14px}.bulk-output{--preview-font-size:18pt;overflow:auto;max-height:45vh;margin-top:10px}.bulk-output table{width:100%;min-width:1500px;border-collapse:collapse;font-size:var(--preview-font-size)}.bulk-output select{font-size:var(--preview-font-size);max-width:420px}.bulk-output th,.bulk-output td{vertical-align:middle}.bulk-output th,.bulk-output td{padding:8px;border-bottom:1px solid #354052;text-align:right}.bulk-output th:first-child,.bulk-output td:first-child,.bulk-output th:last-child,.bulk-output td:last-child{text-align:left}.bulk-status{color:#ffce95;font-size:.9rem}
+
+/* Phone layout: show both tables as readable, labeled cards. */
+@media (max-width: 700px) {
+  body { padding: 14px 10px; font-size: 16px; }
+  h1 { font-size: 1.8rem; }
+  .sidebar { padding: 12px; }
+  .table-navigation { flex-direction: column; gap: 4px; }
+  .alphabet-index { order: -1; flex: 0 0 auto; margin: 4px 0; min-width: 0; }
+  .alphabet-letters { flex-direction: row; max-height: none; overflow-x: auto; overflow-y: hidden; gap: 4px; padding-bottom: 4px; }
+  .alphabet-letters button { flex: 0 0 36px; min-height: 36px; font-size: .9rem; }
+  .prefix-popup { left: 0; right: auto; top: 42px; max-width: calc(100vw - 60px); }
+  .table-navigation .name-list { flex: 0 1 auto; width: 100%; box-sizing: border-box; max-height: 65vh; margin: 4px 0 16px; }
+  .balance-table, .balance-table tbody, .balance-table tr, .balance-table td,
+  .bulk-output table, .bulk-output tbody, .bulk-output tr, .bulk-output td { display: block; box-sizing: border-box; }
+  .balance-table, .bulk-output table { width: 100%; min-width: 0; }
+  .balance-table { font-size: 1rem; }
+  .balance-table thead, .bulk-output thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .balance-table .person-data-row, .bulk-output tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border: 1px solid #354052; border-radius: 9px; margin: 8px; overflow: hidden; background: #151b28; }
+  .balance-table .person-data-row > td, .bulk-output tbody td { min-width: 0; padding: 9px 10px; text-align: left; border-bottom: 1px solid #354052; overflow-wrap: anywhere; }
+  .balance-table .person-data-row > td:not(:first-child)::before, .bulk-output tbody td::before { content: attr(data-label); display: block; color: #d5bd83; font-size: .75rem; font-weight: 700; margin-bottom: 3px; }
+  .balance-table .person-data-row > td:first-child { grid-column: 1 / -1; padding: 0; }
+  .balance-table .person-row { font-size: 1.1rem; padding: 12px 10px; }
+  .balance-table .person-id { font-size: .85rem; }
+  .balance-table .mone-input { width: 100%; min-width: 0; font-size: 1rem; }
+  .balance-table td.mone-input-cell { padding: 9px 10px; }
+  .balance-table td.mone-action { grid-column: 1 / -1; text-align: left; padding: 9px 10px; }
+  .balance-table .mone-open { min-height: 44px; }
+  .bulk-mone { padding: 10px; }
+  .bulk-controls { align-items: stretch; }
+  .bulk-controls label { flex: 1 1 100%; }
+  .bulk-controls input, .bulk-controls select { box-sizing: border-box; width: 100%; min-height: 44px; font-size: 16px; }
+  .bulk-controls button { flex: 1 1 145px; min-height: 44px; }
+  .table-mone-period label { flex: 1 1 125px; }
+  .table-mone-period input { box-sizing: border-box; width: 100%; min-height: 44px; font-size: 16px; }
+  .table-mone-period span { flex-basis: 100%; }
+  .bulk-output { max-height: 65vh; }
+  .bulk-output tbody tr { font-size: var(--preview-font-size); }
+  .bulk-output tbody td:nth-child(-n+3), .bulk-output tbody td:last-child { grid-column: 1 / -1; }
+  .bulk-output tbody select { box-sizing: border-box; width: 100%; max-width: 100%; font-size: max(16px, var(--preview-font-size)); }
+  .bulk-output tbody td:last-child { font-size: .95rem; }
+  #result { padding: 16px; }
+}
+
 [hidden]{display:none!important}
 .mone-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.mone-fields label{font-size:1rem}#moneStatus{color:#ffce95}@media(max-width:900px){.mone-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:500px){.mone-fields{grid-template-columns:1fr}}
 </style></head><body><main class="wrap"><div class="eyebrow">PERSONNEL SERVICES</div><h1>Leave Balance Lookup</h1><p>View the latest published leave balance for a personnel record.</p><p id="message" role="status"></p>
@@ -229,13 +272,13 @@ function addMoneCells(person, row) {
   const original = recordedMone[idKey(person.employeeId)] || {vl:0, sl:0};
   let draft = enabled ? totalRead(key) : null;
   function amountCell(label, value) {
-    const cell = document.createElement('td'); cell.className = 'mone-input-cell';
+    const cell = document.createElement('td'); cell.className = 'mone-input-cell'; cell.dataset.label = label;
     const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.step = '0.001'; input.required = true;
     input.className = 'mone-input'; input.value = value; input.disabled = !enabled || !!(draft && draft.requestId);
     input.setAttribute('aria-label', label + ' total for ' + person.name); cell.appendChild(input); row.appendChild(cell); return input;
   }
   const vl = amountCell('MONE VL', draft ? draft.targetVl : original.vl), sl = amountCell('MONE SL', draft ? draft.targetSl : original.sl);
-  const cell = document.createElement('td'); cell.className = 'mone-action';
+  const cell = document.createElement('td'); cell.className = 'mone-action'; cell.dataset.label = 'MONE action';
   const button = document.createElement('button'); button.type = 'button'; button.className = 'mone-open'; button.textContent = draft && draft.requestId ? 'Retry save' : 'Save MONE'; button.disabled = !enabled;
   button.setAttribute('aria-label', 'Save MONE totals for ' + person.name);
   cell.appendChild(button);
@@ -304,7 +347,7 @@ function appendPersonnelBatch() {
     nameCell.appendChild(button);
     row.appendChild(nameCell);
     for (const key of ['vl', 'sl', 'fl', 'wl', 'spl']) {
-      const cell = document.createElement('td');
+      const cell = document.createElement('td'); cell.dataset.label = key.toUpperCase();
       cell.textContent = person[key] == null || person[key] === '' ? '—' : person[key];
       row.appendChild(cell);
     }
@@ -486,8 +529,8 @@ function renderBulkPreview() {
   results.forEach(row => {
     const tr = document.createElement('tr');
     if (row.person && row.person.selectable) { ids.add(idKey(row.person.employeeId)); tr.dataset.employeeId = idKey(row.person.employeeId); }
-    const nameCell = document.createElement('td'); nameCell.textContent = (row.entry.number ? row.entry.number + ' · ' : '') + (row.entry.rank ? row.entry.rank + ' · ' : '') + (row.entry.display || 'Row ' + row.entry.line); tr.appendChild(nameCell);
-    const groupCell = document.createElement('td'), group = document.createElement('select');
+    const nameCell = document.createElement('td'); nameCell.dataset.label = 'Input name'; nameCell.textContent = (row.entry.number ? row.entry.number + ' · ' : '') + (row.entry.rank ? row.entry.rank + ' · ' : '') + (row.entry.display || 'Row ' + row.entry.line); tr.appendChild(nameCell);
+    const groupCell = document.createElement('td'), group = document.createElement('select'); groupCell.dataset.label = 'Personnel group';
     group.setAttribute('aria-label', 'Personnel group for ' + row.entry.display);
     [['','Unclassified'],['Commissioned','Commissioned'],['Non-commissioned','Non-commissioned'],['Civilian','Civilian']].forEach(([value,label]) => {
       const option = document.createElement('option'); option.value = value; option.textContent = label; group.appendChild(option);
@@ -495,7 +538,7 @@ function renderBulkPreview() {
     group.value = bulkCategories[row.entry.line] || ''; row.category = group.value;
     group.addEventListener('change', () => { bulkCategories[row.entry.line] = group.value; row.category = group.value; reportBatchSaved = false; syncReportButtons(); });
     groupCell.appendChild(group); tr.appendChild(groupCell);
-    const matchCell = document.createElement('td');
+    const matchCell = document.createElement('td'); matchCell.dataset.label = 'Matched employee';
     if (row.suggestions && row.suggestions.length) {
       const select = document.createElement('select');
       select.setAttribute('aria-label', 'Choose and verify employee for ' + row.entry.display);
@@ -517,7 +560,8 @@ function renderBulkPreview() {
       row.person && row.person.sl != null && row.person.sl !== '' ? row.person.sl : '—', row.entry.amount || '—',
       row.suggestion && row.projected ? row.suggestion.moneVl : '—', row.suggestion && row.projected ? row.suggestion.moneSl : '—',
       row.projected ? row.projected.vl : '—', row.projected ? row.projected.sl : '—', row.status];
-    vals.forEach(value => { const td = document.createElement('td'); td.textContent = String(value); tr.appendChild(td); });
+    const mobileLabels = ['Current VL','Current SL','Requested','MONE VL','MONE SL','Preview VL','Preview SL','Status'];
+    vals.forEach((value,index) => { const td = document.createElement('td'); td.dataset.label = mobileLabels[index]; td.textContent = String(value); tr.appendChild(td); });
     bulkRows.appendChild(tr);
   });
   bulkHasPreview = true; bulkResults.hidden = false; bulkFilterIds = ids; nameSearch.value = ''; filterPersonnel();
