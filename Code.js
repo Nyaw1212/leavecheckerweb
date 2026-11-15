@@ -488,3 +488,64 @@ function markMoneReviewImportReviewed(session, batchId) {
     return {batchId:String(batchId)};
   } finally { lock.releaseLock(); }
 }
+
+// Drive access is restricted to one configured folder and signed-in admins.
+function moneDriveContext_(session) {
+  const config = authorizedConfig_(session);
+  if (config.anonymous) throw Error('Drive folder access requires admin sign-in. Enable authentication before using this feature.');
+  const folderId = String(PropertiesService.getScriptProperties().getProperty('MONE_FOLDER_ID') || '').trim();
+  if (!/^[a-zA-Z0-9_-]{10,200}$/.test(folderId)) throw Error('Set MONE_FOLDER_ID in Apps Script project properties.');
+  return {config,folder:DriveApp.getFolderById(folderId)};
+}
+function moneDriveFiles_(folder) {
+  const iter = folder.getFiles(), files = []; let scanned = 0;
+  while (iter.hasNext()) {
+    if (++scanned > 1000) throw Error('Folder contains more than 1,000 files. Move older files to another folder before refreshing.');
+    const file = iter.next(), name = file.getName();
+    if (/\.(docx|xlsx)$/i.test(name) && !file.isTrashed()) files.push(file);
+  }
+  return files;
+}
+function moneDriveReviewData_(config) {
+  const sheet = SpreadsheetApp.openById(config.spreadsheet).getSheetByName('MoneDriveReviews');
+  if (!sheet) return [];
+  const data = sheet.getDataRange().getValues(), headers = ['file_id','modified_ms','reviewed_at'];
+  if (headers.some((header,index) => (data[0] || [])[index] !== header)) throw Error('MoneDriveReviews headers do not match.');
+  return data.slice(1);
+}
+function listMoneDriveFiles(session) {
+  const context = moneDriveContext_(session), reviewed = new Set(moneDriveReviewData_(context.config).map(r => String(r[0]) + ':' + String(r[1])));
+  return moneDriveFiles_(context.folder).map(f => {
+    const version = f.getLastUpdated().getTime(), id = f.getId();
+    return {id,name:f.getName(),modified:version,size:f.getSize(),status:reviewed.has(id + ':' + version) ? 'REVIEWED' : 'PENDING'};
+  }).sort((a,b) => (a.status === b.status ? b.modified-a.modified : a.status === 'PENDING' ? -1 : 1));
+}
+function moneDriveFile_(context, fileId) {
+  if (!/^[a-zA-Z0-9_-]{10,200}$/.test(String(fileId || ''))) throw Error('Invalid file selection.');
+  const match = moneDriveFiles_(context.folder).find(f => f.getId() === fileId);
+  if (!match) throw Error('The selected DOCX or XLSX file is no longer in the configured folder.');
+  return match;
+}
+function importMoneDriveFile(session, fileId, expectedModified) {
+  const context = moneDriveContext_(session), file = moneDriveFile_(context,fileId), version = file.getLastUpdated().getTime();
+  if (Number(expectedModified) !== version) throw Error('This file changed. Refresh the folder list before importing.');
+  if (file.getSize() <= 0 || file.getSize() > 3 * 1024 * 1024) throw Error('File must be between 1 byte and 3 MB.');
+  const result = parseMoneAttachment(session,file.getName(),Utilities.base64Encode(file.getBlob().getBytes()));
+  if (file.getLastUpdated().getTime() !== version) throw Error('This file changed while being read. Refresh and try again.');
+  return result;
+}
+function markMoneDriveReviewed(session, fileId, expectedModified) {
+  const context = moneDriveContext_(session), file = moneDriveFile_(context,fileId), version = file.getLastUpdated().getTime();
+  if (Number(expectedModified) !== version) throw Error('This file changed. Refresh the folder list before marking it reviewed.');
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const book = SpreadsheetApp.openById(context.config.spreadsheet);
+    let sheet = book.getSheetByName('MoneDriveReviews');
+    const headers = ['file_id','modified_ms','reviewed_at'];
+    if (!sheet) sheet = book.insertSheet('MoneDriveReviews');
+    if (!sheet.getLastRow()) sheet.getRange(1,1,1,headers.length).setValues([headers]);
+    const rows = moneDriveReviewData_(context.config);
+    if (!rows.some(r => String(r[0]) === fileId && Number(r[1]) === version)) sheet.appendRow([fileId,version,new Date()]);
+    return {reviewed:true};
+  } finally { lock.releaseLock(); }
+}
