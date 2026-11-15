@@ -489,10 +489,9 @@ function markMoneReviewImportReviewed(session, batchId) {
   } finally { lock.releaseLock(); }
 }
 
-// Drive access is restricted to one configured folder and signed-in admins.
+// Drive access is restricted to the configured folder and follows the app access setting.
 function moneDriveContext_(session) {
   const config = authorizedConfig_(session);
-  if (config.anonymous) throw Error('Drive folder access requires admin sign-in. Enable authentication before using this feature.');
   const folderId = String(PropertiesService.getScriptProperties().getProperty('MONE_FOLDER_ID') || '').trim();
   if (!/^[a-zA-Z0-9_-]{10,200}$/.test(folderId)) throw Error('Set MONE_FOLDER_ID in Apps Script project properties.');
   return {config,folder:DriveApp.getFolderById(folderId)};
