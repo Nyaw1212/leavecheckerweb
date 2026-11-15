@@ -123,7 +123,7 @@ function searchPersonnel(session, query) {
   if (!sheet) throw Error('The balance sheet is unavailable.');
   const rows = sheet.getDataRange().getValues();
   const headings = (rows.shift() || []).map(x => String(x).trim().toLowerCase());
-  const ni = headings.indexOf('name'), ii = headings.indexOf('employee_id');
+  const ni = headings.indexOf('name'), ii = headings.indexOf('employee_id'), asOfIndex = headings.indexOf('as_of');
   const balanceKeys = ['vl', 'sl', 'fl', 'wl', 'spl'];
   const balanceIndexes = balanceKeys.map(key => headings.indexOf(key));
   if (ni < 0 || ii < 0 || balanceIndexes.some(i => i < 0)) throw Error('The balance sheet is not configured correctly.');
@@ -141,7 +141,9 @@ function searchPersonnel(session, query) {
         const value = row[balanceIndexes[index]];
         balances[field] = value == null || value === '' ? null : String(value);
       });
-      return {name: String(row[ni]), employeeId: id, selectable: !!key && counts[key] === 1, ...balances};
+      const asOfValue = asOfIndex < 0 ? '' : row[asOfIndex];
+      const asOf = asOfValue instanceof Date ? Utilities.formatDate(asOfValue, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(asOfValue == null ? '' : asOfValue);
+      return {name: String(row[ni]), employeeId: id, selectable: !!key && counts[key] === 1, asOf, ...balances};
     }).sort((a, b) => a.name.localeCompare(b.name) || a.employeeId.localeCompare(b.employeeId));
   return {items: found, more: false};
 }
