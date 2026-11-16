@@ -810,8 +810,29 @@ function getMoneCompilerData(session) {
     const found = String(detail || '').match(/(?:^|\s·\s)Source file:\s*([\s\S]*?)(?=\s·\s(?:Name parts:|Source remarks:)|$)/i);
     return found ? found[1].trim() : '';
   }
+  function savedNameParts(detail, input) {
+    const match = String(detail || '').match(/(?:^|\s·\s)Name parts:\s*([\s\S]*?)(?=\s·\sSource remarks:|$)/i);
+    if (!match) return null;
+    try {
+      const parts = JSON.parse(match[1]);
+      if (Array.isArray(parts) && parts.length === 3 && parts.every(v => typeof v === 'string') &&
+          norm([text(parts[0]),[text(parts[1]),text(parts[2])].filter(Boolean).join(' ')].filter(Boolean).join(', ')) === norm(input)) return parts.map(text);
+    } catch (_) {}
+    return null;
+  }
   const sourceIndex = new Map(), queue = book.getSheetByName('MoneReviewQueue');
-  let badSourceRows = 0;
+  let badSourceRows = 0, driveFilesRead = 0, driveProblem = '';
+  function indexSourceRows(fileName, rows, source) {
+    rows.forEach(row => {
+      if (!Array.isArray(row) || row.length < 6) return;
+      const key = JSON.stringify([norm(fileName), norm(inputName(row))]);
+      const split = [text(row[2]),text(row[3]),text(row[4])];
+      if (!split[0] || !split[1]) return;
+      if (!sourceIndex.has(key)) sourceIndex.set(key, new Map());
+      const variants = sourceIndex.get(key), variantKey = JSON.stringify(split.map(norm));
+      if (!variants.has(variantKey) || source === 'queue') variants.set(variantKey, {split, source});
+    });
+  }
   if (queue) {
     const data = queue.getDataRange().getValues(), header = (data.shift() || []).map(v => text(v).toLowerCase());
     const fileCol = header.indexOf('file_name'), rowsCol = header.indexOf('rows_json');
@@ -820,32 +841,47 @@ function getMoneCompilerData(session) {
       let rows;
       try { rows = JSON.parse(String(record[rowsCol] || '')); } catch (_) { badSourceRows++; return; }
       if (!Array.isArray(rows)) { badSourceRows++; return; }
-      rows.forEach(row => {
-        if (!Array.isArray(row) || row.length < 6) return;
-        const key = JSON.stringify([norm(record[fileCol]), norm(inputName(row))]);
-        const split = [text(row[2]),text(row[3]),text(row[4])];
-        if (!split[0] || !split[1]) return;
-        if (!sourceIndex.has(key)) sourceIndex.set(key, new Map());
-        sourceIndex.get(key).set(JSON.stringify(split.map(norm)), split);
-      });
+      indexSourceRows(record[fileCol], rows, 'queue');
     });
+  }
+  // Earlier Drive imports were not always saved to the review queue. Recover
+  // name parts from the current file only for exact source-name matches.
+  const wanted = new Set();
+  values.forEach(row => {
+    const detail = text(row[idx.detail]), file = sourceFile(detail), input = text(row[idx.inputName]);
+    if (!file || savedNameParts(detail, input)) return;
+    const existing = sourceIndex.get(JSON.stringify([norm(file), norm(input)]));
+    if (!existing || existing.size !== 1) wanted.add(norm(file));
+  });
+  if (wanted.size) {
+    try {
+      const files = moneDriveFiles_(moneDriveContext_(session).folder), byName = new Map();
+      files.forEach(file => { const key = norm(file.getName()); if (wanted.has(key)) { if (!byName.has(key)) byName.set(key, []); byName.get(key).push(file); } });
+      for (const [name, matches] of byName.entries()) {
+        if (matches.length !== 1) { badSourceRows++; continue; }
+        const file = matches[0];
+        if (file.getSize() <= 0 || file.getSize() > 3 * 1024 * 1024) { badSourceRows++; continue; }
+        try {
+          const before = file.getLastUpdated().getTime();
+          const parsed = parseMoneAttachment(session, file.getName(), Utilities.base64Encode(file.getBlob().getBytes()));
+          if (file.getLastUpdated().getTime() !== before) throw Error('The source file changed while reading.');
+          indexSourceRows(name, parsed.rows, 'drive'); driveFilesRead++;
+        } catch (_) { badSourceRows++; }
+      }
+    } catch (error) { driveProblem = String(error && error.message || 'Could not read the Drive folder.'); }
   }
   let unmatchedNames = 0;
   const rows = values.filter(row => fields.some(field => text(row[idx[field]]))).map(row => {
     const get = field => text(row[idx[field]]), input = get('inputName'), detail = get('detail'), control = sourceFile(detail);
     const variants = sourceIndex.get(JSON.stringify([norm(control), norm(input)]));
     let surname = '', given = '', middle = '', nameStatus = '';
-    let savedParts = null;
-    const partsMatch = detail.match(/(?:^|\s·\s)Name parts:\s*([\s\S]*?)(?=\s·\sSource remarks:|$)/i);
-    if (partsMatch) {
-      try {
-        const parts = JSON.parse(partsMatch[1]);
-        if (Array.isArray(parts) && parts.length === 3 && parts.every(v => typeof v === 'string') &&
-            norm([text(parts[0]),[text(parts[1]),text(parts[2])].filter(Boolean).join(' ')].filter(Boolean).join(', ')) === norm(input)) savedParts = parts.map(text);
-      } catch (_) {}
-    }
+    const savedParts = savedNameParts(detail, input);
     if (savedParts) [surname,given,middle] = savedParts;
-    else if (variants && variants.size === 1) [surname,given,middle] = variants.values().next().value;
+    else if (variants && variants.size === 1) {
+      const found = variants.values().next().value;
+      [surname,given,middle] = found.split;
+      if (found.source === 'drive') nameStatus = 'Name parts from current source file; verify';
+    }
     else {
       const comma = input.indexOf(','); surname = comma >= 0 ? input.slice(0,comma).trim() : '';
       nameStatus = variants && variants.size > 1 ? 'Conflicting source name splits; review' : 'Original name split unavailable; review';
@@ -858,5 +894,5 @@ function getMoneCompilerData(session) {
       employeeId:get('employeeId'), moneVl:get('moneVl'), moneSl:get('moneSl'), tag,
       review:[tag,duplicate,nameStatus].filter(Boolean).join(' · '), office:get('office'), batchId:get('batch_id')};
   });
-  return {rows, unmatchedNames, badSourceRows};
+  return {rows, unmatchedNames, badSourceRows, driveFilesRead, driveProblem};
 }
