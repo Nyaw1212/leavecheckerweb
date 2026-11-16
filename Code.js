@@ -591,3 +591,132 @@ function markMoneDriveReviewed(session, fileId, expectedModified) {
     return {reviewed:true};
   } finally { lock.releaseLock(); }
 }
+
+
+// Controlled CSV import: rows with any recorded MONE are protected from replacement.
+function balanceImportPlan_(config, csvText) {
+  csvText = String(csvText || '').replace(/^\uFEFF/, '');
+  if (!csvText || csvText.length > 1500000) throw Error('Choose a CSV file up to 1.5 MB.');
+  let input;
+  try { input = Utilities.parseCsv(csvText); } catch (e) { throw Error('Could not read this CSV. Export it again from the desktop app.'); }
+  const fields = ['employee_id','name','as_of','vl','sl','fl','wl','spl','updated_at'];
+  const csvHeaders = (input.shift() || []).map(x => String(x || '').trim().toLowerCase());
+  if (csvHeaders.length !== fields.length || fields.some((x,i) => csvHeaders[i] !== x)) throw Error('The CSV must use the Leave Checker export columns in the original order.');
+  input = input.filter(row => row.some(v => String(v || '').trim()));
+  if (!input.length || input.length > 5000) throw Error('The CSV must contain 1 to 5000 data rows.');
+  const book = SpreadsheetApp.openById(config.spreadsheet);
+  const sheet = book.getSheetByName(SHEET_NAME);
+  if (!sheet) throw Error('LeaveBalances is unavailable.');
+  const rowCount = Math.max(sheet.getLastRow(), 1);
+  const values = sheet.getRange(1,1,rowCount,9).getValues();
+  const formulas = sheet.getRange(1,1,rowCount,9).getFormulas();
+  if (fields.some((x,i) => String((values[0] || [])[i] || '').trim().toLowerCase() !== x)) throw Error('LeaveBalances columns differ from the expected export order; no rows changed.');
+  const log = book.getSheetByName('MoneLog');
+  const logRows = log ? log.getDataRange().getValues() : [];
+  const protectedIds = new Set();
+  if (logRows.length) {
+    const head = logRows[0].map(x => String(x || '').trim().toLowerCase());
+    const idIndex = head.indexOf('employee_id'), statusIndex = head.indexOf('status');
+    if (idIndex < 0 || statusIndex < 0) throw Error('MoneLog headers could not be verified; import stopped.');
+    logRows.slice(1).forEach(row => {
+      const id = normalizeEmployeeId_(row[idIndex]), status = String(row[statusIndex] || '').trim().toUpperCase();
+      if (id && status !== 'APPLIED' && status !== 'PENDING') throw Error('MoneLog has an entry with an unknown status; review it before importing.');
+      if (id && (status === 'APPLIED' || status === 'PENDING')) protectedIds.add(id);
+      if (!id && row.some(v => String(v || '').trim())) throw Error('MoneLog has a record without an employee number; review it before importing.');
+    });
+  }
+  const currentById = Object.create(null), currentNames = [];
+  values.slice(1).forEach((row,i) => {
+    const id = normalizeEmployeeId_(row[0]), name = normalize_(row[1]);
+    if (id) (currentById[id] || (currentById[id] = [])).push(i+2);
+    if (name) currentNames.push({id,name});
+  });
+  const inputCounts = Object.create(null), inputNames = Object.create(null), inputBySurname = Object.create(null);
+  input.forEach(row => {
+    const id = normalizeEmployeeId_(row[0]), name = normalize_(row[1]);
+    if (id) inputCounts[id] = (inputCounts[id] || 0) + 1;
+    if (name) {
+      (inputNames[name] || (inputNames[name] = new Set())).add(id);
+      const surname = name.includes(',') ? name.split(',')[0].trim() : name;
+      (inputBySurname[surname] || (inputBySurname[surname] = [])).push({id,name});
+    }
+  });
+  function similarName(a,b) {
+    if (a === b) return true;
+    const x = a.split(','), y = b.split(',');
+    if (x.length !== 2 || y.length !== 2 || x[0].trim() !== y[0].trim()) return false;
+    const ag = x[1].trim(), bg = y[1].trim();
+    return !!ag && !!bg && (ag.startsWith(bg + ' ') || bg.startsWith(ag + ' '));
+  }
+  const results = [], writes = [];
+  input.forEach((row,index) => {
+    const idText = String(row[0] || '').trim(), id = normalizeEmployeeId_(idText);
+    const name = String(row[1] || '').trim(), date = String(row[2] || '').trim();
+    const asDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(date + 'T00:00:00Z') : null;
+    let status = '', target = null;
+    if (row.length !== 9 || !id || !/^[a-z0-9 -]+$/i.test(idText) || /^man-/i.test(idText) || !name || /^[=+\-@]/.test(name) || /^[=+\-@]/.test(String(row[8] || '').trim())) status = 'Review: missing or unsafe ID/name or incorrect columns';
+    else if (!asDate || isNaN(asDate.getTime()) || asDate.toISOString().slice(0,10) !== date) status = 'Review: invalid as-of date';
+    else if (row.slice(3,8).some(v => String(v).trim() !== '' && !Number.isFinite(Number(v)))) status = 'Review: invalid leave balance';
+    else if (inputCounts[id] !== 1) status = 'Review: duplicate employee number in CSV';
+    else if (inputNames[normalize_(name)].size > 1 || (inputBySurname[normalize_(name).split(',')[0].trim()] || []).some(other => other.id !== id && similarName(other.name, normalize_(name)))) status = 'Review: similar names have different employee numbers in CSV';
+    else if (protectedIds.has(id)) status = 'Protected: MONE recorded; existing balance unchanged';
+    else if ((currentById[id] || []).length > 1) status = 'Review: duplicate employee number in sheet';
+    else if ((currentById[id] || []).length === 1) {
+      target = currentById[id][0];
+      const oldDate = values[target-1][2] instanceof Date ? Utilities.formatDate(values[target-1][2], Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(values[target-1][2] || '').trim();
+      if (normalize_(values[target-1][1]) !== normalize_(name)) status = 'Review: employee number has a different name';
+      else if (formulas[target-1].some(Boolean)) status = 'Review: sheet row contains a formula';
+      else if (!/^\d{4}-\d{2}-\d{2}$/.test(oldDate)) status = 'Review: existing as-of date is missing or invalid';
+      else if (oldDate > date) status = 'Review: CSV balance is older than the sheet';
+      else status = 'Update existing unprotected row';
+    } else if (currentNames.some(item => similarName(item.name, normalize_(name)))) status = 'Review: similar existing name; check for a blank ID or duplicate';
+    else status = 'Add new employee';
+    if (status === 'Add new employee' || status === 'Update existing unprotected row') {
+      const clean = [idText, name, date].concat(row.slice(3,8).map(v => String(v).trim() === '' ? '' : Number(v)), [String(row[8] || '').trim()]);
+      writes.push({target, row:clean});
+    }
+    results.push({line:index+2, name, employeeId:idText, status});
+  });
+  // Include the underlying snapshot and CSV in the token; stale previews cannot be applied.
+  const raw = JSON.stringify({csvText, values, formulas, logRows});
+  const token = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, raw, Utilities.Charset.UTF_8)
+    .map(v => ('0' + ((v+256)%256).toString(16)).slice(-2)).join('');
+  return {sheet, results, writes, token};
+}
+
+function previewBalanceImport(session, csvText) {
+  const config = authorizedConfig_(session);
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const plan = balanceImportPlan_(config, csvText);
+    return {token:plan.token, rows:plan.results, eligible:plan.writes.length};
+  } finally { lock.releaseLock(); }
+}
+
+function saveBalanceImport(session, csvText, token) {
+  const config = authorizedConfig_(session);
+  if (!/^[a-f0-9]{64}$/.test(String(token || ''))) throw Error('Preview the file before saving.');
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const plan = balanceImportPlan_(config, csvText);
+    if (plan.token !== token) throw Error('The sheet, MONE log, or CSV changed. Preview again before saving.');
+    if (!plan.writes.length) return {saved:0};
+    const sheet = plan.sheet;
+    let next = sheet.getLastRow() + 1, saved = 0;
+    const needed = plan.writes.filter(item => item.target === null).length;
+    if (next + needed - 1 > sheet.getMaxRows()) sheet.insertRowsAfter(sheet.getMaxRows(), next + needed - 1 - sheet.getMaxRows());
+    try {
+      plan.writes.forEach(item => {
+        const row = item.target === null ? next++ : item.target;
+        // Ensure IDs such as 002-1020 are kept as text.
+        sheet.getRange(row, 1).setNumberFormat('@');
+        sheet.getRange(row, 1, 1, 9).setValues([item.row]);
+        saved++;
+      });
+      SpreadsheetApp.flush();
+    } catch (error) {
+      throw Error('Import stopped after ' + saved + ' row(s) were written. Review the sheet and preview again before retrying. ' + error.message);
+    }
+    return {saved};
+  } finally { lock.releaseLock(); }
+}
