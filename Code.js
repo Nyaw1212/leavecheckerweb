@@ -494,18 +494,38 @@ function parseMoneAttachment(session, fileName, base64) {
     }));
   }
   const found = [];
-  tables.forEach(table => table.forEach(row => {
-    for (let i = 0; i <= Math.min(9, row.length - 1); i++) {
-      const serial = String(row[i] || '').trim(), rank = String(row[i+1] || '').trim();
-      const numbered = /^\d+\.?$/.test(serial);
-      // Some official forms leave the No. column blank for every person.
-      // Require a rank containing a digit for this case, so headings are skipped.
-      const unnumbered = !serial && /^[a-z]{1,8}\s*\d[a-z0-9.\/-]*$/i.test(rank);
-      if ((!numbered && !unnumbered) || !/^[a-z][a-z0-9 .\/-]{1,24}$/i.test(rank) || !/[a-z]/i.test(rank) || !String(row[i+2] || '').trim() || !String(row[i+3] || '').trim()) continue;
-      found.push(Array.from({length:7}, (_, column) => String(row[i+column] == null ? '' : row[i+column]).replace(/[\t\r\n]+/g, ' ').trim()));
-      break;
+  tables.forEach(table => {
+    // Support explicitly labeled four-column lists, including a blank middle name.
+    // Do not guess from unlabelled rows or read the balance/log sheets as requests.
+    const headerKey = value => String(value || '').trim().toLowerCase().replace(/[._\s]+/g, ' ');
+    const headerRow = table.findIndex(row => {
+      const keys = row.map(headerKey);
+      return keys.includes('surname') && keys.includes('first name') &&
+        keys.includes('middle name') && keys.includes('days requested') &&
+        !keys.includes('rank') && !keys.includes('no') && !keys.includes('no.');
+    });
+    if (headerRow >= 0) {
+      const header = table[headerRow].map(headerKey);
+      const indexes = ['surname', 'first name', 'middle name', 'days requested'].map(key => header.indexOf(key));
+      table.slice(headerRow + 1).forEach(row => {
+        const read = index => String(row[index] == null ? '' : row[index]).replace(/[\t\r\n]+/g, ' ').trim();
+        const surname = read(indexes[0]), first = read(indexes[1]);
+        if (!surname || !first || !/[a-z]/i.test(surname) || !/[a-z]/i.test(first)) return;
+        found.push([String(found.length + 1), '', surname, first, read(indexes[2]), read(indexes[3]), '']);
+      });
+      return;
     }
-  }));
+    table.forEach(row => {
+      for (let i = 0; i <= Math.min(9, row.length - 1); i++) {
+        const serial = String(row[i] || '').trim(), rank = String(row[i+1] || '').trim();
+        const numbered = /^\d+\.?$/.test(serial);
+        const unnumbered = !serial && /^[a-z]{1,8}\s*\d[a-z0-9.\/-]*$/i.test(rank);
+        if ((!numbered && !unnumbered) || !/^[a-z][a-z0-9 .\/-]{1,24}$/i.test(rank) || !/[a-z]/i.test(rank) || !String(row[i+2] || '').trim() || !String(row[i+3] || '').trim()) continue;
+        found.push(Array.from({length:7}, (_, column) => String(row[i+column] == null ? '' : row[i+column]).replace(/[\t\r\n]+/g, ' ').trim()));
+        break;
+      }
+    });
+  });
   if (!found.length) throw Error('No supported personnel rows were found. Check the rank and name columns.');
   if (found.length > 500) throw Error('This file contains more than 500 personnel rows. Split it into smaller batches.');
   return {fileName, rows:found, count:found.length, missingAmounts:found.filter(row => !row[5]).length};
