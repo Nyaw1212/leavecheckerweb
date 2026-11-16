@@ -338,7 +338,7 @@ function saveMoneReportBatch(session, input) {
   }
   if (!/^[a-zA-Z0-9-]{16,100}$/.test(batchId) || office.length > 150 || !dateOk(start) || !dateOk(end) || start > end || !Array.isArray(rows) || !rows.length || rows.length > 500) throw Error('Enter a valid date range and 1 to 500 preview rows; office may be blank.');
   const fields = ['number','rank','inputName','matchedName','employeeId','category','requested','currentVl','currentSl','moneVl','moneSl','previewVl','previewSl','tag','manuallySelected','detail'];
-  const tags = ['READY','INVALID_INPUT','NAME_REVIEW','DUPLICATE','EMPLOYEE_ID_REVIEW','BALANCE_UNAVAILABLE','INSUFFICIENT_BALANCE','REQUEST_ADJUSTED','NEEDS_REVIEW'];
+  const tags = ['READY','INVALID_INPUT','NAME_REVIEW','DUPLICATE','EMPLOYEE_ID_REVIEW','NO_LEAVE_CARD','BALANCE_UNAVAILABLE','INSUFFICIENT_BALANCE','REQUEST_ADJUSTED','NEEDS_REVIEW'];
   const groups = ['Commissioned','Non-commissioned','Civilian','Unclassified'];
   const cleanRows = rows.map(row => {
     if (!row || typeof row !== 'object' || !groups.includes(row.category) || !tags.includes(row.tag)) throw Error('Invalid personnel group or review tag. Refresh the preview.');
