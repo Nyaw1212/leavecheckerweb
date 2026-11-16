@@ -441,12 +441,16 @@ function parseMoneAttachment(session, fileName, base64) {
   tables.forEach(table => table.forEach(row => {
     for (let i = 0; i <= Math.min(9, row.length - 1); i++) {
       const serial = String(row[i] || '').trim(), rank = String(row[i+1] || '').trim();
-      if (!/^\d+\.?$/.test(serial) || !/^[a-z][a-z0-9 .\/-]{1,24}$/i.test(rank) || !/[a-z]/i.test(rank) || !String(row[i+2] || '').trim() || !String(row[i+3] || '').trim()) continue;
+      const numbered = /^\d+\.?$/.test(serial);
+      // Some official forms leave the No. column blank for every person.
+      // Require a rank containing a digit for this case, so headings are skipped.
+      const unnumbered = !serial && /^[a-z]{1,8}\s*\d[a-z0-9.\/-]*$/i.test(rank);
+      if ((!numbered && !unnumbered) || !/^[a-z][a-z0-9 .\/-]{1,24}$/i.test(rank) || !/[a-z]/i.test(rank) || !String(row[i+2] || '').trim() || !String(row[i+3] || '').trim()) continue;
       found.push(Array.from({length:7}, (_, column) => String(row[i+column] == null ? '' : row[i+column]).replace(/[\t\r\n]+/g, ' ').trim()));
       break;
     }
   }));
-  if (!found.length) throw Error('No numbered personnel rows were found. Check the table format.');
+  if (!found.length) throw Error('No supported personnel rows were found. Check the rank and name columns.');
   if (found.length > 500) throw Error('This file contains more than 500 personnel rows. Split it into smaller batches.');
   return {fileName, rows:found, count:found.length, missingAmounts:found.filter(row => !row[5]).length};
 }
