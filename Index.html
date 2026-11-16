@@ -1038,7 +1038,7 @@ function compiledMoneExcelRows(result) {
 const compilerButton = document.getElementById('moneCompileExport');
 compilerButton.addEventListener('click', async () => {
   if (compilerButton.disabled) return;
-  compilerButton.disabled = true; bulkSaveStatus.textContent = 'Compiling saved batches…';
+  compilerButton.disabled = true; bulkSaveStatus.textContent = 'Compiling saved batches and checking original Drive files…';
   try {
     const result = await new Promise((resolve,reject) => google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getMoneCompilerData(session));
     if (!result.rows.length) { bulkSaveStatus.textContent = 'No saved batch rows were found in MoneBatchData.'; return; }
@@ -1046,7 +1046,7 @@ compilerButton.addEventListener('click', async () => {
     const url = URL.createObjectURL(new Blob([bytes], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
     const link = document.createElement('a'); link.href = url; link.download = 'MONE_saved_batches.xlsx';
     document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-    bulkSaveStatus.textContent = result.rows.length + ' saved batch rows exported. ' + result.unmatchedNames + ' names need first/middle review.' + (result.badSourceRows ? ' Some source imports could not be read.' : '') + ' This report does not confirm deductions.';
+    bulkSaveStatus.textContent = result.rows.length + ' saved batch rows exported. ' + result.unmatchedNames + ' names need first/middle review. ' + (result.driveFilesRead || 0) + ' original Drive files read.' + (result.badSourceRows ? ' Some source files could not be read or have duplicate filenames.' : '') + (result.driveProblem ? ' Drive lookup unavailable: ' + result.driveProblem : '') + ' This report does not confirm deductions.';
   } catch (error) { bulkSaveStatus.textContent = 'Could not export saved batches: ' + (error && error.message || 'connection error'); }
   finally { compilerButton.disabled = false; }
 });
