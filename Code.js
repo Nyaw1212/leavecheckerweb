@@ -861,27 +861,29 @@ function getMoneCompilerData(session) {
   const idx = Object.create(null); fields.forEach(field => { idx[field] = headings.indexOf(field); });
   if (fields.some(field => idx[field] < 0)) throw Error('MoneBatchData is missing expected columns. Review the sheet before exporting.');
   const text = value => String(value == null ? '' : value).trim();
-  const rows = values.filter(row => fields.some(field => text(row[idx[field]]))).map(row => {
+  const resolutions = moneReviewLatest_(book);
+  const rows = values.map((row, index) => ({row, sourceRow:index+2})).filter(item => fields.some(field => text(item.row[idx[field]]))).map(item => {
+    const row = item.row, resolution = resolutions[moneReviewKey_(text(row[idx.batch_id]),item.sourceRow,moneReviewHash_(row))];
     const get = field => text(row[idx[field]]), detail = get('detail');
     const source = detail.match(/(?:^|\s·\s)Source file:\s*([\s\S]*?)(?=\s·\s(?:Camp:|Name parts:|Source remarks:)|$)/i);
     const remarks = detail.match(/(?:^|\s·\s)Source remarks:\s*([\s\S]*)$/i);
     const campMatch = detail.match(/(?:^|\s·\s)Camp:\s*(MAXIMUM|MED|MIN|RDC)(?=\s·\s|$)/i);
     const duplicate = /POSSIBLE_DUPLICATE_PREVIOUS_BATCH/i.test(detail) ? 'Possible duplicate; review' : '';
-    const tag = get('tag');
+    const tag = resolution ? String(resolution[13]) : get('tag');
     const tagRemarks = {NAME_REVIEW:'Name match needs review', INVALID_INPUT:'Invalid input; review', DUPLICATE:'Possible duplicate; review',
       EMPLOYEE_ID_REVIEW:'Employee number needs review', NO_LEAVE_CARD:'No leave card', BALANCE_UNAVAILABLE:'Leave balance unavailable; review',
       INSUFFICIENT_BALANCE:'Insufficient leave credits', REQUEST_ADJUSTED:'Requested amount adjusted; review', NEEDS_REVIEW:'Needs review'};
     const statusText = detail.split(/\s·\s(?:Source file:|Camp:|Name parts:|Source remarks:)/i)[0].trim()
       .replace(/^POSSIBLE_DUPLICATE_PREVIOUS_BATCH:[\s\S]*?\.\s*/i,'').trim();
     const sourceRemarks = remarks ? remarks[1].trim() : '';
-    const issueDetails = tag !== 'READY' && statusText && statusText !== 'Preview only' ? statusText : '';
-    const remarkParts = [tagRemarks[tag] || (tag && tag !== 'READY' ? tag.replace(/_/g,' ') + '; review' : ''), issueDetails, duplicate, sourceRemarks].filter(Boolean);
+    const issueDetails = !resolution && tag !== 'READY' && statusText && statusText !== 'Preview only' ? statusText : '';
+    const remarkParts = [resolution ? 'Reviewed; suggested calculation only' : '', resolution ? String(resolution[14] || '') : '', tagRemarks[tag] || (tag && tag !== 'READY' ? tag.replace(/_/g,' ') + '; review' : ''), issueDetails, duplicate, sourceRemarks].filter(Boolean);
     const combinedRemarks = remarkParts.filter((part,i) => remarkParts.findIndex(other => other.toLowerCase() === part.toLowerCase()) === i).join(' · ');
-    const vl = get('moneVl'), sl = get('moneSl');
+    const vl = resolution ? String(resolution[11]) : get('moneVl'), sl = resolution ? String(resolution[12]) : get('moneSl');
     const approved = vl !== '' && sl !== '' && Number.isFinite(Number(vl)) && Number.isFinite(Number(sl)) && Number(vl) >= 0 && Number(sl) >= 0 ? Math.round((Number(vl) + Number(sl)) * 1000) / 1000 : '';
     return {batchId:get('batch_id'), number:get('number'), rank:get('rank'), inputName:get('inputName'), requested:get('requested'), approved,
       remarks:combinedRemarks, controlNumber:source ? source[1].trim() : '', camp:campMatch ? campMatch[1].toUpperCase() : '', office:get('office'),
-      review:[get('tag'), duplicate].filter(Boolean).join(' · ')};
+      review:[resolution ? 'REVIEWED · '+tag : get('tag'), duplicate].filter(Boolean).join(' · ')};
   });
   const locations = moneLocations_(book, false);
   if (locations) {
@@ -1029,5 +1031,93 @@ function scanMoneSourceLocations(session) {
       sheet.getRange(last+1,1,append.length,3).setValues(append.map(row=>row.map(safe)));
     }
     return {added:append.length, existing:existing.size, issues:issues.slice(0,30), issueCount:issues.length, sheetUrl:book.getUrl() + '#gid=' + sheet.getSheetId()};
+  } finally { lock.releaseLock(); }
+}
+
+
+const MONE_REVIEW_HEADERS = ['review_id','batch_id','source_row','source_fingerprint','input_name','employee_id','matched_name','credit_as_of','vl','sl','requested','mone_vl','mone_sl','tag','note','reviewed_at'];
+function moneReviewSheet_(book, create) {
+  let sheet = book.getSheetByName('MoneReviewResolutions');
+  if (!sheet && create) sheet = book.insertSheet('MoneReviewResolutions');
+  if (!sheet) return null;
+  if (create && !sheet.getLastRow()) sheet.getRange(1,1,1,MONE_REVIEW_HEADERS.length).setValues([MONE_REVIEW_HEADERS]);
+  const headers = (sheet.getDataRange().getValues()[0] || []).map(v => String(v || '').trim());
+  if (MONE_REVIEW_HEADERS.some((v,i) => headers[i] !== v)) throw Error('MoneReviewResolutions headers do not match; check the sheet.');
+  return sheet;
+}
+function moneReviewHash_(row) {
+  const values = row.map(v => v instanceof Date ? v.toISOString() : String(v == null ? '' : v));
+  return Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, JSON.stringify(values), Utilities.Charset.UTF_8));
+}
+function moneReviewKey_(batch, row, hash) { return JSON.stringify([String(batch), Number(row), String(hash)]); }
+function moneReviewLatest_(book) {
+  const sheet = moneReviewSheet_(book, false), result = Object.create(null);
+  if (!sheet) return result;
+  sheet.getDataRange().getValues().slice(1).forEach(row => {
+    if (row[1] && row[2] && row[3]) result[moneReviewKey_(row[1],row[2],row[3])] = row;
+  });
+  return result;
+}
+function moneReviewSource_(sheet, rowNumber) {
+  if (!Number.isInteger(rowNumber) || rowNumber < 2 || rowNumber > sheet.getLastRow()) throw Error('Original batch row no longer exists. Refresh the queue.');
+  const data = sheet.getDataRange().getValues(), headings = data[0].map(v => String(v || '').trim());
+  const needed = ['batch_id','inputName','employeeId','matchedName','requested','tag','detail','start_date','end_date'];
+  if (needed.some(x => headings.indexOf(x) < 0)) throw Error('MoneBatchData headers are incomplete.');
+  const row = data[rowNumber-1], get = name => String(row[headings.indexOf(name)] == null ? '' : row[headings.indexOf(name)]);
+  const source = get('detail').match(/(?:^|\s·\s)Source file:\s*([\s\S]*?)(?=\s·\s(?:Camp:|Name parts:|Source remarks:)|$)/i);
+  return {row, batchId:get('batch_id'), hash:moneReviewHash_(row), inputName:get('inputName'), employeeId:get('employeeId'), matchedName:get('matchedName'), requested:get('requested'), tag:get('tag'), detail:get('detail'), controlNumber:source ? source[1].trim() : ''};
+}
+function listMoneNeedsReview(session) {
+  const config = authorizedConfig_(session), book = SpreadsheetApp.openById(config.spreadsheet);
+  const sheet = book.getSheetByName('MoneBatchData'); if (!sheet || sheet.getLastRow()<2) return {items:[]};
+  const data = sheet.getDataRange().getValues(), headings = data[0].map(v => String(v || '').trim());
+  ['batch_id','inputName','requested','tag','detail'].forEach(x => { if (headings.indexOf(x)<0) throw Error('MoneBatchData headers are incomplete.'); });
+  const latest = moneReviewLatest_(book), items = [];
+  for (let i=1; i<data.length; i++) {
+    const row=data[i], get=n=>String(row[headings.indexOf(n)] == null ? '' : row[headings.indexOf(n)]);
+    if (!get('batch_id') || !get('inputName')) continue;
+    const tag=get('tag'), detail=get('detail'), hash=moneReviewHash_(row), key=moneReviewKey_(get('batch_id'),i+1,hash);
+    if (latest[key] || (tag==='READY' && !/POSSIBLE_DUPLICATE_PREVIOUS_BATCH/i.test(detail))) continue;
+    const source=detail.match(/(?:^|\s·\s)Source file:\s*([\s\S]*?)(?=\s·\s(?:Camp:|Name parts:|Source remarks:)|$)/i);
+    items.push({rowNumber:i+1,batchId:get('batch_id'),hash,inputName:get('inputName'),employeeId:get('employeeId'),matchedName:get('matchedName'),requested:get('requested'),tag,detail:detail.split(/\s·\s(?:Source file:|Camp:|Name parts:|Source remarks:)/i)[0],controlNumber:source?source[1].trim():''});
+  }
+  return {items};
+}
+function saveMoneReviewResolution(session, input) {
+  const config=authorizedConfig_(session); input=input||{};
+  const rowNumber=Number(input.rowNumber), id=String(input.employeeId||'').trim(), asOf=String(input.asOf||''), note=String(input.note||'').trim();
+  if (!/^[a-zA-Z0-9-]{16,100}$/.test(String(input.reviewId||'')) || !normalizeEmployeeId_(id) || id.length>100 || note.length>500) throw Error('Enter a valid employee and review note.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf) || isNaN(new Date(asOf+'T00:00:00Z').getTime()) || new Date(asOf+'T00:00:00Z').toISOString().slice(0,10)!==asOf) throw Error('Enter a valid date for the verified credits.');
+  if (input.vl === '' || input.sl === '' || input.vl == null || input.sl == null) throw Error('Enter both verified VL and SL credits.');
+  const vl=Number(input.vl), sl=Number(input.sl);
+  if (!Number.isFinite(vl)||!Number.isFinite(sl)||vl<0||sl<0||vl>10000||sl>10000) throw Error('Enter valid non-negative VL and SL credits.');
+  const lock=LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const book=SpreadsheetApp.openById(config.spreadsheet), batch=book.getSheetByName('MoneBatchData');
+    if (!batch) throw Error('Saved batches are unavailable.');
+    const original=moneReviewSource_(batch,rowNumber);
+    if (original.batchId!==String(input.batchId) || original.hash!==String(input.hash)) throw Error('Original batch row changed. Refresh the queue before saving.');
+    const sheet=moneReviewSheet_(book,true), rows=sheet.getDataRange().getValues(), previous=rows.slice(1).find(r=>String(r[0])===String(input.reviewId));
+    if (previous) {
+      if (String(previous[1])!==original.batchId || Number(previous[2])!==rowNumber || String(previous[3])!==original.hash || normalizeEmployeeId_(previous[5])!==normalizeEmployeeId_(id) || String(previous[7])!==asOf || Number(previous[8])!==vl || Number(previous[9])!==sl || String(previous[14]||'')!==note) throw Error('Review ID already used with different details; refresh the queue.');
+      return {alreadySaved:true};
+    }
+    if (moneReviewLatest_(book)[moneReviewKey_(original.batchId,rowNumber,original.hash)]) throw Error('This entry was already reviewed. Refresh the queue.');
+    const person=lookupBalance(session,id);
+    if (!person) throw Error('Employee number is missing or duplicated in Leave2. Add or fix the employee record first.');
+    if (person.moneBlocked || person.moneRecorded) throw Error('This employee has MONE recorded or needing review. Check MoneLog before resolving this entry.');
+    const requested=Number(original.requested);
+    if (!Number.isFinite(requested)||requested<=0||requested>1000) throw Error('The original requested amount needs manual correction before review.');
+    const usable=x=>Math.floor(Math.max(0,Math.round(x*1000)-5000)/5000)*5;
+    const uv=usable(vl), us=usable(sl); let target, mv, ms;
+    if (sl>vl) { target=Math.floor(Math.min(requested,us)/5)*5; mv=0; ms=target; }
+    else { target=Math.floor(Math.min(requested,uv+us)/5)*5; const near=Math.abs(vl-sl)<=20;
+      mv=near?Math.min(uv,Math.floor(target/10)*5):vl>sl?Math.min(uv,target):Math.min(uv,Math.max(0,target-us));
+      ms=Math.min(us,target-mv); if(near) mv+=Math.min(uv-mv,target-mv-ms);
+    }
+    const tag=target<requested ? (requested%5===0?'INSUFFICIENT_BALANCE':'REQUEST_ADJUSTED'):'READY';
+    const safe=x=>/^[\s]*[=+\-@]/.test(String(x))?"'"+String(x):x;
+    sheet.appendRow([input.reviewId,original.batchId,rowNumber,original.hash,safe(original.inputName),safe(id),safe(person.name),asOf,vl,sl,requested,mv,ms,tag,safe(note),new Date()]);
+    return {approved:mv+ms,tag};
   } finally { lock.releaseLock(); }
 }
