@@ -857,7 +857,7 @@ function getMoneCompilerData(session) {
   const sheet = book.getSheetByName('MoneBatchData');
   if (!sheet) return {rows:[]};
   const values = sheet.getDataRange().getValues(), headings = (values.shift() || []).map(v => String(v || '').trim());
-  const fields = ['number','rank','inputName','requested','moneVl','moneSl','tag','detail','office'];
+  const fields = ['batch_id','number','rank','inputName','requested','moneVl','moneSl','tag','detail','office'];
   const idx = Object.create(null); fields.forEach(field => { idx[field] = headings.indexOf(field); });
   if (fields.some(field => idx[field] < 0)) throw Error('MoneBatchData is missing expected columns. Review the sheet before exporting.');
   const text = value => String(value == null ? '' : value).trim();
@@ -867,10 +867,20 @@ function getMoneCompilerData(session) {
     const remarks = detail.match(/(?:^|\s·\s)Source remarks:\s*([\s\S]*)$/i);
     const campMatch = detail.match(/(?:^|\s·\s)Camp:\s*(MAXIMUM|MED|MIN|RDC)(?=\s·\s|$)/i);
     const duplicate = /POSSIBLE_DUPLICATE_PREVIOUS_BATCH/i.test(detail) ? 'Possible duplicate; review' : '';
+    const tag = get('tag');
+    const tagRemarks = {NAME_REVIEW:'Name match needs review', INVALID_INPUT:'Invalid input; review', DUPLICATE:'Possible duplicate; review',
+      EMPLOYEE_ID_REVIEW:'Employee number needs review', NO_LEAVE_CARD:'No leave card', BALANCE_UNAVAILABLE:'Leave balance unavailable; review',
+      INSUFFICIENT_BALANCE:'Insufficient leave credits', REQUEST_ADJUSTED:'Requested amount adjusted; review', NEEDS_REVIEW:'Needs review'};
+    const statusText = detail.split(/\s·\s(?:Source file:|Camp:|Name parts:|Source remarks:)/i)[0].trim()
+      .replace(/^POSSIBLE_DUPLICATE_PREVIOUS_BATCH:[\s\S]*?\.\s*/i,'').trim();
+    const sourceRemarks = remarks ? remarks[1].trim() : '';
+    const issueDetails = tag !== 'READY' && statusText && statusText !== 'Preview only' ? statusText : '';
+    const remarkParts = [tagRemarks[tag] || (tag && tag !== 'READY' ? tag.replace(/_/g,' ') + '; review' : ''), issueDetails, duplicate, sourceRemarks].filter(Boolean);
+    const combinedRemarks = remarkParts.filter((part,i) => remarkParts.findIndex(other => other.toLowerCase() === part.toLowerCase()) === i).join(' · ');
     const vl = get('moneVl'), sl = get('moneSl');
     const approved = vl !== '' && sl !== '' && Number.isFinite(Number(vl)) && Number.isFinite(Number(sl)) && Number(vl) >= 0 && Number(sl) >= 0 ? Math.round((Number(vl) + Number(sl)) * 1000) / 1000 : '';
-    return {number:get('number'), rank:get('rank'), inputName:get('inputName'), requested:get('requested'), approved,
-      remarks:remarks ? remarks[1].trim() : '', controlNumber:source ? source[1].trim() : '', camp:campMatch ? campMatch[1].toUpperCase() : '', office:get('office'),
+    return {batchId:get('batch_id'), number:get('number'), rank:get('rank'), inputName:get('inputName'), requested:get('requested'), approved,
+      remarks:combinedRemarks, controlNumber:source ? source[1].trim() : '', camp:campMatch ? campMatch[1].toUpperCase() : '', office:get('office'),
       review:[get('tag'), duplicate].filter(Boolean).join(' · ')};
   });
   const locations = moneLocations_(book, false);
@@ -891,6 +901,21 @@ function getMoneCompilerData(session) {
       if (!row.office && office) row.office = office;
     });
   }
+  // Keep every saved batch row and flag files with multiple saved batches.
+  const sourceBatches = new Map();
+  rows.forEach(row => {
+    const key = String(row.controlNumber || '').normalize('NFKC').replace(/\s+/g,' ').trim().toLowerCase();
+    if (key && row.batchId) { if (!sourceBatches.has(key)) sourceBatches.set(key,new Set()); sourceBatches.get(key).add(row.batchId); }
+  });
+  rows.forEach(row => {
+    const key = String(row.controlNumber || '').normalize('NFKC').replace(/\s+/g,' ').trim().toLowerCase();
+    if (key && sourceBatches.get(key) && sourceBatches.get(key).size > 1) {
+      row.remarks = [row.remarks, 'Multiple saved batches for source file; review'].filter(Boolean).join(' · ');
+      row.review = [row.review, 'Multiple saved batches; review'].filter(Boolean).join(' · ');
+    }
+  });
+  rows.sort((a,b) => String(a.controlNumber || '').localeCompare(String(b.controlNumber || ''), undefined, {numeric:true}) ||
+    String(a.batchId || '').localeCompare(String(b.batchId || '')));
   return {rows};
 }
 
