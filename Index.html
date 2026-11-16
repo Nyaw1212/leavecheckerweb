@@ -768,12 +768,13 @@ function syncBulkQueueButtons() {
 function createBulkSaveQueue(rows, totals, startDate, endDate, makeId) {
   const items = [];
   rows.forEach(row => {
-    if (row.status !== 'Preview only' || !row.projected || !row.person || !row.suggestion) return;
+    const reduced = row.status.startsWith('Reduced:') && row.suggestion && row.suggestion.target > 0;
+    if ((row.status !== 'Preview only' && !reduced) || !row.projected || !row.person || !row.suggestion) return;
     const previous = totals[idKey(row.person.employeeId)] || {vl:0, sl:0};
     const deltaVl = (Math.round(row.suggestion.moneVl * 1000) - Math.round(Number(previous.vl) * 1000)) / 1000;
     const deltaSl = (Math.round(row.suggestion.moneSl * 1000) - Math.round(Number(previous.sl) * 1000)) / 1000;
     if (!deltaVl && !deltaSl) return;
-    items.push({name:row.person.name, employeeId:row.person.employeeId, line:row.entry.line,
+    items.push({name:row.person.name, employeeId:row.person.employeeId, line:row.entry.line, reduced, requested:row.entry.amount,
       targetVl:row.suggestion.moneVl, targetSl:row.suggestion.moneSl,
       input:{employeeId:row.person.employeeId, requestId:makeId(), startDate, endDate,
         vl:deltaVl, sl:deltaSl, adjustment:true, expectedVl:row.person.vl, expectedSl:row.person.sl,
@@ -834,7 +835,7 @@ async function runBulkQueue() {
       bulkQueue = next;
       const person = personnel && personnel.find(person => idKey(person.employeeId) === idKey(item.employeeId));
       if (person) { person.vl = result.vl; person.sl = result.sl; }
-      if (item.line && bulkRows.children[item.line - 1] && bulkRows.children[item.line - 1].dataset.employeeId === idKey(item.employeeId)) bulkRows.children[item.line - 1].lastElementChild.textContent = result.alreadyApplied ? 'Already saved' : 'Saved to sheet';
+      if (item.line && bulkRows.children[item.line - 1] && bulkRows.children[item.line - 1].dataset.employeeId === idKey(item.employeeId)) bulkRows.children[item.line - 1].lastElementChild.textContent = item.reduced ? (result.alreadyApplied ? 'Already saved (reduced; review)' : 'Saved (reduced; review)') : (result.alreadyApplied ? 'Already saved' : 'Saved to sheet');
     }
     if (response.error) {
       bulkSaving = false; syncBulkQueueButtons();
@@ -856,9 +857,10 @@ bulkSaveButton.addEventListener('click', () => {
   if (reportPending || reportBusy || reportQueueError) { bulkSaveStatus.textContent = 'Resolve the pending report batch before saving this batch.'; return; }
   if (!reportBatchSaved) { queue.reportBatch = makeReportBatch(bulkPreviewRows, office, queue.startDate, queue.endDate, makeId()); queue.reportConfirmed = false; }
   if (!queue.items.length && !queue.reportBatch) { bulkSaveStatus.textContent = 'There are no changed, eligible MONE entries to save.'; return; }
-  const reviewCount = bulkPreviewRows.filter(row => row.status !== 'Preview only').length;
-  const lines = queue.items.map(item => item.name + ' (' + item.employeeId + '): VL ' + item.targetVl + ', SL ' + item.targetSl).join('\n');
-  if (!window.confirm('Save ' + queue.items.length + ' MONE entries for ' + queue.startDate + ' to ' + queue.endDate + '?\n\n' + lines + '\n\n' + reviewCount + ' flagged row(s) will be saved for audit and skipped for deductions. The batch will be saved for reports before eligible balances are adjusted.')) return;
+  const reducedCount = queue.items.filter(item => item.reduced).length;
+  const reviewCount = bulkPreviewRows.filter(row => row.status !== 'Preview only' && !(row.status.startsWith('Reduced:') && row.suggestion && row.suggestion.target > 0 && row.projected)).length;
+  const lines = queue.items.map(item => item.name + ' (' + item.employeeId + '): VL ' + item.targetVl + ', SL ' + item.targetSl + (item.reduced ? ' [reduced from ' + item.requested + ']' : '')).join('\n');
+  if (!window.confirm('Save ' + queue.items.length + ' MONE entries for ' + queue.startDate + ' to ' + queue.endDate + '?\n\n' + lines + '\n\n' + reducedCount + ' reduced row(s) will be saved at the eligible amount. ' + reviewCount + ' other flagged row(s) will be saved for audit and skipped for deductions. The batch will be saved for reports before eligible balances are adjusted.')) return;
   if (!writeBulkQueue(queue)) { bulkSaveStatus.textContent = 'Cannot save the recovery queue in this browser. No entries were sent.'; return; }
   bulkQueue = queue; runBulkQueue();
 });
