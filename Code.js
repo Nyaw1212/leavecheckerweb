@@ -1,5 +1,6 @@
 /** Leave Checker Web: read-only Apps Script lookup. Configuration is in Script Properties. */
-const SHEET_NAME = 'LeaveBalances';
+const SHEET_NAME = 'LeaveBalances'; // Legacy safe CSV importer target.
+const BASE_SHEET_NAME = 'Leave2';
 const SESSION_SECONDS = 1800;
 
 function doGet(e) {
@@ -87,7 +88,7 @@ function lookupBalance(session, employeeId) {
   const config = authorizedConfig_(session);
   employeeId = String(employeeId || '').trim();
   if (!employeeId || employeeId.length > 100 || !normalizeEmployeeId_(employeeId)) throw Error('Enter an employee number.');
-  const sheet = SpreadsheetApp.openById(config.spreadsheet).getSheetByName(SHEET_NAME);
+  const sheet = SpreadsheetApp.openById(config.spreadsheet).getSheetByName(BASE_SHEET_NAME);
   if (!sheet) throw Error('The balance sheet is unavailable.');
   const data = sheet.getDataRange().getValues();
   const expected = ['employee_id', 'name', 'as_of', 'vl', 'sl', 'fl', 'wl', 'spl', 'updated_at'];
@@ -101,6 +102,9 @@ function lookupBalance(session, employeeId) {
   const row = matches[0];
   const result = {};
   expected.forEach((key, i) => { const v = row[indexes[i]]; result[key] = v instanceof Date ? Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd') : (v === '' ? null : String(v)); });
+  const state = latestMoneBalances_(SpreadsheetApp.openById(config.spreadsheet))[idKey];
+  const effective = effectiveMoneBalance_(result.vl, result.sl, state);
+  result.vl = effective.vl; result.sl = effective.sl; result.moneRecorded = !!(state && state.recorded); result.moneBlocked = !!effective.blocked;
   return result;
 }
 
@@ -119,7 +123,7 @@ function searchPersonnel(session, query) {
   const config = authorizedConfig_(session);
   const q = normalize_(query);
   if (q.length > 200) throw Error('Search text is too long.');
-  const sheet = SpreadsheetApp.openById(config.spreadsheet).getSheetByName(SHEET_NAME);
+  const sheet = SpreadsheetApp.openById(config.spreadsheet).getSheetByName(BASE_SHEET_NAME);
   if (!sheet) throw Error('The balance sheet is unavailable.');
   const rows = sheet.getDataRange().getValues();
   const headings = (rows.shift() || []).map(x => String(x).trim().toLowerCase());
@@ -127,6 +131,7 @@ function searchPersonnel(session, query) {
   const balanceKeys = ['vl', 'sl', 'fl', 'wl', 'spl'];
   const balanceIndexes = balanceKeys.map(key => headings.indexOf(key));
   if (ni < 0 || ii < 0 || balanceIndexes.some(i => i < 0)) throw Error('The balance sheet is not configured correctly.');
+  const latest = latestMoneBalances_(SpreadsheetApp.openById(config.spreadsheet));
   const counts = {};
   rows.forEach(row => {
     const id = normalizeEmployeeId_(row[ii]);
@@ -143,7 +148,9 @@ function searchPersonnel(session, query) {
       });
       const asOfValue = asOfIndex < 0 ? '' : row[asOfIndex];
       const asOf = asOfValue instanceof Date ? Utilities.formatDate(asOfValue, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(asOfValue == null ? '' : asOfValue);
-      return {name: String(row[ni]), employeeId: id, selectable: !!key && counts[key] === 1, asOf, ...balances};
+      const state = latest[key], effective = effectiveMoneBalance_(balances.vl, balances.sl, state);
+      balances.vl = effective.vl; balances.sl = effective.sl;
+      return {name: String(row[ni]), employeeId: id, selectable: !!key && counts[key] === 1, asOf, moneRecorded: !!(state && state.recorded), moneBlocked: !!effective.blocked, ...balances};
     }).sort((a, b) => a.name.localeCompare(b.name) || a.employeeId.localeCompare(b.employeeId));
   return {items: found, more: false};
 }
@@ -154,6 +161,36 @@ function normalizeEmployeeId_(value) {
 
 function normalize_(v) { return String(v || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase(); }
 function signOut(session) { if (/^[0-9a-f]{64}$/i.test(String(session || ''))) CacheService.getScriptCache().remove('session:' + session); }
+
+
+// The last applied log row is the recorded balance; Leave2 is never mutated.
+function latestMoneBalances_(book, suppliedRows) {
+  const log = book.getSheetByName('MoneLog');
+  if (!log && !suppliedRows) return Object.create(null);
+  const rows = suppliedRows || log.getDataRange().getValues();
+  const expected = ['request_id','employee_id','name','month','year','vl_deducted','sl_deducted','vl_before','sl_before','vl_after','sl_after','recorded_at','status'];
+  const headers = (rows[0] || []).map(v => String(v || '').trim().toLowerCase());
+  if (expected.some((h, i) => headers[i] !== h)) throw Error('MoneLog headers do not match. Review the log.');
+  const out = Object.create(null);
+  rows.slice(1).forEach(row => {
+    const id = normalizeEmployeeId_(row[1]), status = String(row[12] || '').trim().toUpperCase();
+    if (!id) { if (row.some(v => v !== '' && v != null)) throw Error('MoneLog has a row without an employee number. Review it.'); return; }
+    if (!out[id]) out[id] = {recorded:false, pending:false, invalid:false};
+    if (status === 'PENDING') { out[id].pending = true; return; }
+    if (status !== 'APPLIED') { out[id].invalid = true; return; }
+    const vl = row[9], sl = row[10];
+    if (vl === '' || sl === '' || vl == null || sl == null || !Number.isFinite(Number(vl)) || !Number.isFinite(Number(sl))) {
+      out[id].invalid = true; return;
+    }
+    out[id].recorded = true; out[id].vl = String(vl); out[id].sl = String(sl);
+  });
+  return out;
+}
+function effectiveMoneBalance_(baseVl, baseSl, state) {
+  if (state && (state.pending || state.invalid)) return {vl:null, sl:null, blocked:true};
+  if (state && state.recorded) return {vl:state.vl, sl:state.sl, recorded:true};
+  return {vl:baseVl, sl:baseSl, recorded:false};
+}
 
 // MONE writes follow the web app's access settings.
 function applyMone(session, input) {
@@ -186,8 +223,8 @@ function applyMone(session, input) {
   lock.waitLock(10000);
   try {
     const book = SpreadsheetApp.openById(config.spreadsheet);
-    const sheet = book.getSheetByName(SHEET_NAME);
-    if (!sheet) throw Error('The balance sheet is unavailable.');
+    const sheet = book.getSheetByName(BASE_SHEET_NAME);
+    if (!sheet) throw Error('The base balance sheet is unavailable.');
     const rows = sheet.getDataRange().getValues();
     const headers = (rows.shift() || []).map(x => String(x).trim().toLowerCase());
     const idIndex = headers.indexOf('employee_id'), nameIndex = headers.indexOf('name');
@@ -215,6 +252,7 @@ function applyMone(session, input) {
     } else if (existingDateHeaders[0] !== 'start_date' || existingDateHeaders[1] !== 'end_date') {
       throw Error('MoneLog date columns do not match the expected format.');
     }
+    const effective = effectiveMoneBalance_(matches[0].row[vlIndex], matches[0].row[slIndex], latestMoneBalances_(book, logRows)[id]);
     const previous = logRows.slice(1).find(row => String(row[0]) === requestId);
     if (previous) {
       if (normalizeEmployeeId_(previous[1]) !== id || Number(previous[3]) !== month || Number(previous[4]) !== year ||
@@ -222,10 +260,16 @@ function applyMone(session, input) {
           String(previous[13]) !== startDate || String(previous[14]) !== endDate)
         throw Error('This request ID has different details. Review the log before retrying.');
       if (previous[12] !== 'APPLIED') throw Error('This MONE entry is pending. Check MoneLog and balances before retrying.');
-      return {name: String(matches[0].row[nameIndex]), vl: String(matches[0].row[vlIndex]), sl: String(matches[0].row[slIndex]), alreadyApplied: true};
+      if (effective.blocked) throw Error('MONE log needs review before the balance can be used.');
+      return {name: String(matches[0].row[nameIndex]), vl: String(effective.vl), sl: String(effective.sl), alreadyApplied: true};
     }
     if (logRows.slice(1).some(row => normalizeEmployeeId_(row[1]) === id && String(row[12]) === 'PENDING'))
       throw Error('This employee has a pending MONE entry. Check MoneLog and balances before recording another.');
+    if (!adjusting) {
+      const dateValue = value => value instanceof Date ? Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(value == null ? '' : value).trim();
+      if (logRows.slice(1).some(row => normalizeEmployeeId_(row[1]) === id && String(row[12]).trim().toUpperCase() === 'APPLIED' && dateValue(row[13]) === startDate && dateValue(row[14]) === endDate))
+        throw Error('MONE has already been recorded for this employee and period. Review the existing entry.');
+    }
     if (adjusting) {
       const dateValue = value => value instanceof Date ? Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(value == null ? '' : value).trim();
       let currentVl = 0, currentSl = 0;
@@ -241,7 +285,8 @@ function applyMone(session, input) {
       if (value === '' || value === null || value === undefined || !Number.isFinite(Number(value))) throw Error(label + ' balance is unavailable. Review it before recording MONE.');
       return Math.round(Number(value) * 1000);
     }
-    const match = matches[0], vlBefore = balance(match.row[vlIndex], 'VL'), slBefore = balance(match.row[slIndex], 'SL');
+    if (effective.blocked) throw Error('MONE log needs review before saving.');
+    const match = matches[0], vlBefore = balance(effective.vl, 'VL'), slBefore = balance(effective.sl, 'SL');
     const asOfValue = match.row[asOfIndex];
     const asOf = asOfValue instanceof Date ? Utilities.formatDate(asOfValue, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(asOfValue || '').trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf) || year * 100 + month > Number(asOf.slice(0, 4)) * 100 + Number(asOf.slice(5, 7)))
@@ -249,25 +294,17 @@ function applyMone(session, input) {
     if (amount(input.expectedVl) !== vlBefore || amount(input.expectedSl) !== slBefore)
       throw Error('The balance changed since it was displayed. Reload the employee and review it again.');
     if (vlDeduction > vlBefore || slDeduction > slBefore) throw Error('A MONE deduction exceeds the available balance.');
-    const rowNumber = match.index + 2, startCol = Math.min(vlIndex, slIndex) + 1;
-    const range = sheet.getRange(rowNumber, startCol, 1, 2);
-    if (range.getFormulas()[0].some(Boolean)) throw Error('VL or SL is a formula. Review the sheet before recording MONE.');
-    const after = [0, 0];
-    after[vlIndex - (startCol - 1)] = (vlBefore - vlDeduction) / 1000;
-    after[slIndex - (startCol - 1)] = (slBefore - slDeduction) / 1000;
+    const vlAfter = (vlBefore - vlDeduction) / 1000, slAfter = (slBefore - slDeduction) / 1000;
     const logRow = log.getLastRow() + 1;
     log.getRange(logRow, 14, 1, 2).setNumberFormat('@');
+    // One append under the script lock: the log is the balance record.
     log.getRange(logRow, 1, 1, logHeaders.length).setValues([[
       requestId, String(match.row[idIndex]), String(match.row[nameIndex]), month, year,
       vlDeduction / 1000, slDeduction / 1000, vlBefore / 1000, slBefore / 1000,
-      after[vlIndex - (startCol - 1)], after[slIndex - (startCol - 1)], new Date(), 'PENDING', startDate, endDate
+      vlAfter, slAfter, new Date(), 'APPLIED', startDate, endDate
     ]]);
     SpreadsheetApp.flush();
-    range.setValues([after]);
-    SpreadsheetApp.flush();
-    log.getRange(logRow, 13).setValue('APPLIED');
-    SpreadsheetApp.flush();
-    return {name: String(match.row[nameIndex]), vl: String(after[vlIndex - (startCol - 1)]), sl: String(after[slIndex - (startCol - 1)]), alreadyApplied: false};
+    return {name: String(match.row[nameIndex]), vl: String(vlAfter), sl: String(slAfter), alreadyApplied: false};
   } finally {
     lock.releaseLock();
   }
@@ -766,7 +803,7 @@ function rememberMoneNameMapping(session, input, employeeId, expectedName) {
   try {
     const book = SpreadsheetApp.openById(config.spreadsheet);
     if (employeeId) {
-      const balance = book.getSheetByName(SHEET_NAME);
+      const balance = book.getSheetByName(BASE_SHEET_NAME);
       if (!balance) throw Error('LeaveBalances is unavailable.');
       const rows = balance.getDataRange().getValues(), header = (rows.shift() || []).map(v => String(v || '').trim().toLowerCase());
       const idIndex = header.indexOf('employee_id'), nameIndex = header.indexOf('name');
