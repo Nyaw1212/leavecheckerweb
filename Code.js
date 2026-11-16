@@ -792,3 +792,71 @@ function rememberMoneNameMapping(session, input, employeeId, expectedName) {
     return {key, employeeId, employeeName:expectedName};
   } finally { lock.releaseLock(); }
 }
+
+
+// Read-only compilation of saved batch snapshots. It does not imply that a deduction was applied.
+function getMoneCompilerData(session) {
+  const config = authorizedConfig_(session), book = SpreadsheetApp.openById(config.spreadsheet);
+  const sheet = book.getSheetByName('MoneBatchData');
+  if (!sheet) return {rows:[], unmatchedNames:0};
+  const values = sheet.getDataRange().getValues(), headings = (values.shift() || []).map(v => String(v || '').trim());
+  const fields = ['batch_id','office','start_date','end_date','number','rank','inputName','matchedName','employeeId','category','requested','moneVl','moneSl','tag','detail'];
+  const idx = Object.create(null); fields.forEach(field => { idx[field] = headings.indexOf(field); });
+  if (fields.some(field => idx[field] < 0)) throw Error('MoneBatchData is missing expected columns. Review the sheet before exporting.');
+  function text(v) { return String(v == null ? '' : v).trim(); }
+  function norm(v) { return text(v).normalize('NFKC').replace(/\s+/g, ' ').toLowerCase(); }
+  function inputName(r) { return [text(r[2]), [text(r[3]),text(r[4])].filter(Boolean).join(' ')].filter(Boolean).join(', '); }
+  function sourceFile(detail) {
+    const found = String(detail || '').match(/(?:^|\s·\s)Source file:\s*([\s\S]*?)(?=\s·\s(?:Name parts:|Source remarks:)|$)/i);
+    return found ? found[1].trim() : '';
+  }
+  const sourceIndex = new Map(), queue = book.getSheetByName('MoneReviewQueue');
+  let badSourceRows = 0;
+  if (queue) {
+    const data = queue.getDataRange().getValues(), header = (data.shift() || []).map(v => text(v).toLowerCase());
+    const fileCol = header.indexOf('file_name'), rowsCol = header.indexOf('rows_json');
+    if (fileCol < 0 || rowsCol < 0) throw Error('MoneReviewQueue is missing expected columns.');
+    data.forEach(record => {
+      let rows;
+      try { rows = JSON.parse(String(record[rowsCol] || '')); } catch (_) { badSourceRows++; return; }
+      if (!Array.isArray(rows)) { badSourceRows++; return; }
+      rows.forEach(row => {
+        if (!Array.isArray(row) || row.length < 6) return;
+        const key = JSON.stringify([norm(record[fileCol]), norm(inputName(row))]);
+        const split = [text(row[2]),text(row[3]),text(row[4])];
+        if (!split[0] || !split[1]) return;
+        if (!sourceIndex.has(key)) sourceIndex.set(key, new Map());
+        sourceIndex.get(key).set(JSON.stringify(split.map(norm)), split);
+      });
+    });
+  }
+  let unmatchedNames = 0;
+  const rows = values.filter(row => fields.some(field => text(row[idx[field]]))).map(row => {
+    const get = field => text(row[idx[field]]), input = get('inputName'), detail = get('detail'), control = sourceFile(detail);
+    const variants = sourceIndex.get(JSON.stringify([norm(control), norm(input)]));
+    let surname = '', given = '', middle = '', nameStatus = '';
+    let savedParts = null;
+    const partsMatch = detail.match(/(?:^|\s·\s)Name parts:\s*([\s\S]*?)(?=\s·\sSource remarks:|$)/i);
+    if (partsMatch) {
+      try {
+        const parts = JSON.parse(partsMatch[1]);
+        if (Array.isArray(parts) && parts.length === 3 && parts.every(v => typeof v === 'string') &&
+            norm([text(parts[0]),[text(parts[1]),text(parts[2])].filter(Boolean).join(' ')].filter(Boolean).join(', ')) === norm(input)) savedParts = parts.map(text);
+      } catch (_) {}
+    }
+    if (savedParts) [surname,given,middle] = savedParts;
+    else if (variants && variants.size === 1) [surname,given,middle] = variants.values().next().value;
+    else {
+      const comma = input.indexOf(','); surname = comma >= 0 ? input.slice(0,comma).trim() : '';
+      nameStatus = variants && variants.size > 1 ? 'Conflicting source name splits; review' : 'Original name split unavailable; review';
+      unmatchedNames++;
+    }
+    const remarks = detail.match(/(?:^|\s·\s)Source remarks:\s*([\s\S]*)$/i);
+    const tag = get('tag'), duplicate = /POSSIBLE_DUPLICATE_PREVIOUS_BATCH/i.test(detail) ? 'Possible duplicate; review' : '';
+    return {number:get('number'), rank:get('rank'), surname, given, middle, requested:get('requested'),
+      remarks:remarks ? remarks[1].trim() : '', controlNumber:control, inputName:input, matchedName:get('matchedName'),
+      employeeId:get('employeeId'), moneVl:get('moneVl'), moneSl:get('moneSl'), tag,
+      review:[tag,duplicate,nameStatus].filter(Boolean).join(' · '), office:get('office'), batchId:get('batch_id')};
+  });
+  return {rows, unmatchedNames, badSourceRows};
+}
