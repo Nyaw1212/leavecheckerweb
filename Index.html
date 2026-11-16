@@ -535,6 +535,19 @@ function createBulkPreview(entries, people, totals, selected = {}) {
   const counts = new Map();
   results.forEach(row => { if (row.person && row.person.selectable) { const key = idKey(row.person.employeeId); counts.set(key, (counts.get(key) || 0) + 1); } });
   results.forEach(row => { if (row.person && counts.get(idKey(row.person.employeeId)) > 1) { row.projected = null; row.status = 'Employee appears more than once; review.'; } });
+  // Even unmatched input rows should be flagged if the same full name appears twice.
+  const inputCounts = new Map();
+  results.forEach(row => {
+    const key = row.entry.surname && row.entry.given ? bulkWords(row.entry.display) : '';
+    if (key) inputCounts.set(key, (inputCounts.get(key) || 0) + 1);
+  });
+  results.forEach(row => {
+    const key = row.entry.surname && row.entry.given ? bulkWords(row.entry.display) : '';
+    if (key && inputCounts.get(key) > 1 && !row.status.includes('more than once')) {
+      row.projected = null;
+      row.status = 'Possible duplicate input name; review. ' + row.status;
+    }
+  });
   return results;
 }
 const bulkInput = document.getElementById('bulkMoneInput'), bulkPasteFormat = document.getElementById('bulkPasteFormat');
@@ -946,6 +959,7 @@ function syncReportButtons() {
   reportRetry.hidden = reportClear.hidden = !reportPending; reportRetry.disabled = reportClear.disabled = reportBusy;
 }
 function reportTag(row) {
+  if (row.status.startsWith('Possible duplicate input name;')) return 'DUPLICATE';
   if (!row.entry.valid) return 'INVALID_INPUT';
   if (!row.person) return 'NAME_REVIEW';
   if (row.status.includes('more than once')) return 'DUPLICATE';
