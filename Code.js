@@ -816,5 +816,136 @@ function getMoneCompilerData(session) {
       remarks:remarks ? remarks[1].trim() : '', controlNumber:source ? source[1].trim() : '', camp:campMatch ? campMatch[1].toUpperCase() : '', office:get('office'),
       review:[get('tag'), duplicate].filter(Boolean).join(' · ')};
   });
+  const locations = moneLocations_(book, false);
+  if (locations) {
+    const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g,' ').trim().toLowerCase();
+    const saved = locations.getDataRange().getValues().slice(1), lookup = new Map(), counts = new Map();
+    saved.forEach(row => { const key = normalize(row[0]); if (key) counts.set(key,(counts.get(key)||0)+1); });
+    saved.forEach(row => { const key = normalize(row[0]); if (key && counts.get(key) === 1) lookup.set(key,row); });
+    rows.forEach(row => {
+      const key = normalize(row.controlNumber);
+      if (!key) return;
+      if (counts.get(key) > 1) { row.review += ' · Duplicate source location; review'; return; }
+      const item = lookup.get(key);
+      if (!item) return;
+      const camp = String(item[1] || '').trim().toUpperCase(), office = String(item[2] || '').trim();
+      if (!row.camp && ['MAXIMUM','MED','MIN','RDC'].includes(camp)) row.camp = camp;
+      else if (!row.camp && camp) row.review += ' · Invalid source camp; review';
+      if (!row.office && office) row.office = office;
+    });
+  }
   return {rows};
+}
+
+
+// Cache only; scans run explicitly and never overwrite an existing mapping.
+const MONE_SOURCE_LOCATIONS = 'MoneSourceLocations';
+const MONE_SOURCE_HEADERS = ['source_filename','camp','office'];
+function moneLocations_(book, create) {
+  let sheet = book.getSheetByName(MONE_SOURCE_LOCATIONS);
+  if (!sheet && create) { sheet = book.insertSheet(MONE_SOURCE_LOCATIONS); sheet.getRange(1,1,1,3).setValues([MONE_SOURCE_HEADERS]); }
+  if (!sheet) return null;
+  const head = sheet.getRange(1,1,1,3).getValues()[0];
+  if (MONE_SOURCE_HEADERS.some((name,i) => String(head[i] || '').trim() !== name)) throw Error('MoneSourceLocations must have source_filename, camp, office headers.');
+  return sheet;
+}
+function sourceLocationFromLines_(lines) {
+  const camps = new Set(), offices = new Set();
+  lines.forEach(raw => {
+    const line = String(raw || '').replace(/\s+/g,' ').trim();
+    if (!line || line.length > 200) return;
+    const upper = line.toUpperCase();
+    if (/\b(?:MAX(?:IMUM)?\s*[- ]?SEC(?:URITY)?\s*[- ]?CAMP|MAXIMUM\s+SECURITY|MAXSECAMP)\b/.test(upper)) camps.add('MAXIMUM');
+    if (/\b(?:MED(?:IUM)?\s*[- ]?SEC(?:URITY)?\s*[- ]?CAMP|MEDIUM\s+SECURITY|MEDSECAMP)\b/.test(upper)) camps.add('MED');
+    if (/\b(?:MIN(?:IMUM)?\s*[- ]?SEC(?:URITY)?\s*[- ]?CAMP|MINIMUM\s+SECURITY|MINSECAMP)\b/.test(upper)) camps.add('MIN');
+    if (/\bRDC\b|\bRECEPTION\s+(?:AND|&)\s+DIAGNOSTIC\s+CENT(?:ER|RE)\b/.test(upper)) camps.add('RDC');
+    let office = '';
+    const labelled = line.match(/^(?:OFFICE|UNIT|SECTION|DIVISION)\s*:\s*(.+)$/i);
+    if (labelled) office = labelled[1].trim();
+    else if (/\b(?:OFFICE|UNIT|SECTION|DIVISION)\b/i.test(line)) office = line.split(/,\s*(?:NBP\b|MAX(?:IMUM)?\b|MED(?:IUM)?\b|MIN(?:IMUM)?\b|RDC\b)/i)[0].trim();
+    office = office.replace(/\s*[-–,]\s*(?:NBP\s*)?(?:MAXSECAMP|MEDSECAMP|MINSECAMP|RDC)\s*$/i,'').trim();
+    if (office && office.length <= 150 && !/^(?:OFFICE|UNIT|SECTION|DIVISION|BUREAU OF CORRECTIONS)$/i.test(office) && !/^[=+\-@]/.test(office)) offices.add(office);
+  });
+  return {camp:camps.size === 1 ? [...camps][0] : '', office:offices.size === 1 ? [...offices][0] : '', ambiguous:camps.size > 1 || offices.size > 1};
+}
+function sourceHeadingLines_(file) {
+  if (file.getSize() <= 0 || file.getSize() > 3*1024*1024) throw Error('Source file size is unsupported.');
+  const entries = Utilities.unzip(Utilities.newBlob(file.getBlob().getBytes(), 'application/zip', file.getName()));
+  if (entries.length > 1000) throw Error('Too many file parts.');
+  const parts = Object.create(null); let size = 0;
+  entries.forEach(part => { size += part.getBytes().length; parts[part.getName()] = part; });
+  if (size > 20*1024*1024) throw Error('Source file is too large.');
+  const children = (node,name) => node.getChildren().filter(child => child.getName() === name);
+  const descendants = (node,name) => { let found=[]; function visit(n){ n.getChildren().forEach(child => {if(child.getName()===name) found.push(child); visit(child);}); } visit(node); return found; };
+  const xml = part => XmlService.parse(part.getDataAsString('UTF-8')).getRootElement();
+  const content = node => descendants(node,'t').map(n=>n.getValue()).join('');
+  const lines = [];
+  if (/\.docx$/i.test(file.getName())) {
+    if (!parts['word/document.xml']) throw Error('Document body unavailable.');
+    const body = descendants(xml(parts['word/document.xml']),'body')[0];
+    if (!body) throw Error('Document body unavailable.');
+    for (const node of body.getChildren()) {
+      if (node.getName() === 'tbl') break;
+      if (node.getName() === 'p') { const line = content(node).trim(); if (line) lines.push(line); }
+      if (lines.length >= 25) break;
+    }
+  } else if (/\.xlsx$/i.test(file.getName())) {
+    let shared = [];
+    if (parts['xl/sharedStrings.xml']) shared = descendants(xml(parts['xl/sharedStrings.xml']),'si').map(content);
+    const names = Object.keys(parts).filter(name => /^xl\/worksheets\/sheet\d+\.xml$/.test(name)).sort();
+    for (const name of names.slice(0,5)) {
+      const rows = descendants(xml(parts[name]),'row').slice(0,8);
+      rows.forEach(row => children(row,'c').forEach(cell => {
+        const attrs = cell.getAttributes(), a = attrs.find(x => x.getName()==='t');
+        const kind = a ? a.getValue() : '', value = children(cell,'v')[0];
+        const text = kind === 's' && value ? shared[Number(value.getValue())] : kind === 'inlineStr' ? content(cell) : '';
+        if (text && String(text).trim()) lines.push(String(text).trim());
+      }));
+    }
+  } else throw Error('Only DOCX and XLSX source files are supported.');
+  return lines;
+}
+function scanMoneSourceLocations(session) {
+  const config = authorizedConfig_(session), context = moneDriveContext_(session), book = SpreadsheetApp.openById(config.spreadsheet);
+  const report = book.getSheetByName('MoneBatchData');
+  if (!report) throw Error('No saved batches were found.');
+  const values = report.getDataRange().getValues(), header = (values.shift() || []).map(v => String(v || '').trim()), detailCol = header.indexOf('detail');
+  if (detailCol < 0) throw Error('MoneBatchData detail column is missing.');
+  const normalize = v => String(v || '').normalize('NFKC').replace(/\s+/g,' ').trim().toLowerCase();
+  const names = new Map();
+  values.forEach(row => { const m = String(row[detailCol] || '').match(/(?:^|\s·\s)Source file:\s*([\s\S]*?)(?=\s·\s(?:Camp:|Name parts:|Source remarks:)|$)/i); if (m && m[1].trim()) names.set(normalize(m[1]),m[1].trim()); });
+  const files = new Map();
+  moneDriveFiles_(context.folder).forEach(file => { const key = normalize(file.getName()); if (names.has(key)) { if (!files.has(key)) files.set(key,[]); files.get(key).push(file); } });
+  const prepared = [], issues = [];
+  // Read only filenames not already cached; the second check under lock below
+  // protects user edits or concurrent scans while the source files are read.
+  let sheet = moneLocations_(book, false), existing = new Set();
+  if (sheet) sheet.getDataRange().getValues().slice(1).forEach(row=>existing.add(normalize(row[0])));
+  for (const [key,name] of names.entries()) {
+    if (existing.has(key)) continue;
+    const candidates = files.get(key) || [];
+    if (candidates.length !== 1) { prepared.push([name,'','']); issues.push(name + ': ' + (candidates.length ? 'duplicate filenames' : 'file not found')); continue; }
+    try {
+      const file = candidates[0], before = file.getLastUpdated().getTime();
+      const parsed = sourceLocationFromLines_(sourceHeadingLines_(file));
+      if (file.getLastUpdated().getTime() !== before) throw Error('File changed while reading.');
+      prepared.push([name,parsed.camp,parsed.office]);
+      if (!parsed.camp || !parsed.office || parsed.ambiguous) issues.push(name + ': verify missing or ambiguous location');
+    } catch (error) { prepared.push([name,'','']); issues.push(name + ': could not read heading'); }
+  }
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    sheet = moneLocations_(book, true);
+    const current = sheet.getDataRange().getValues().slice(1);
+    existing = new Set(current.map(row=>normalize(row[0])));
+    const append = prepared.filter(row=>!existing.has(normalize(row[0])));
+    if (append.length) {
+      const last = sheet.getLastRow(), needed = last + append.length - sheet.getMaxRows();
+      if (needed > 0) sheet.insertRowsAfter(sheet.getMaxRows(),needed);
+      // Prevent file names and office labels from being interpreted as formulas.
+      const safe = value => /^\s*[=+\-@]/.test(value) ? "'" + value : value;
+      sheet.getRange(last+1,1,append.length,3).setValues(append.map(row=>row.map(safe)));
+    }
+    return {added:append.length, existing:existing.size, issues:issues.slice(0,30), issueCount:issues.length, sheetUrl:book.getUrl() + '#gid=' + sheet.getSheetId()};
+  } finally { lock.releaseLock(); }
 }
