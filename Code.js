@@ -274,6 +274,24 @@ function applyMone(session, input) {
 }
 
 
+/** Process a group of individual, idempotent requests in one server call.
+ * Each entry retains applyMone's lock, validation and pending-log recovery.
+ * The group stops at the first failure; it is not an atomic transaction.
+ */
+function applyMoneBatch(session, inputs) {
+  authorizedConfig_(session);
+  if (!Array.isArray(inputs) || !inputs.length || inputs.length > 10) throw Error('A save group must contain 1 to 10 entries.');
+  const ids = inputs.map(input => String(input && input.requestId || ''));
+  if (new Set(ids).size !== ids.length) throw Error('Duplicate request IDs in save group.');
+  const results = [];
+  for (const input of inputs) {
+    try { results.push({requestId:String(input.requestId), result:applyMone(session, input)}); }
+    catch (error) { return {results, error:{requestId:String(input && input.requestId || ''), message:String(error && error.message || 'Save failed.')}}; }
+  }
+  return {results, error:null};
+}
+
+
 
 // Totals are for confirmed entries with the exact selected date range. Older
 // month-only records cannot be safely assigned to a specific range.
