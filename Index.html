@@ -531,7 +531,7 @@ const bulkInput = document.getElementById('bulkMoneInput'), bulkPasteFormat = do
 const bulkFontSize = document.getElementById('bulkFontSize'), bulkExport = document.getElementById('bulkMoneExport');
 const bulkOffice = document.getElementById('bulkOffice');
 try { bulkOffice.value = localStorage.getItem('leavechecker:mone-preview-office') || ''; } catch (_) {}
-bulkOffice.addEventListener('input', () => { try { localStorage.setItem('leavechecker:mone-preview-office', bulkOffice.value); } catch (_) {} });
+bulkOffice.addEventListener('input', () => { try { localStorage.setItem('leavechecker:mone-preview-office', bulkOffice.value); } catch (_) {} reportBatchSaved = false; syncReportButtons(); });
 try { const savedFont = localStorage.getItem('leavechecker:mone-preview-font'); if (savedFont && Array.from(bulkFontSize.options).some(option => option.value === savedFont)) bulkFontSize.value = savedFont; } catch (_) {}
 function applyBulkFont() {
   bulkResults.parentElement.style.setProperty('--preview-font-size', bulkFontSize.value + 'pt');
@@ -744,7 +744,7 @@ try {
   if (saved) {
     const parsed = JSON.parse(saved);
     if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.items) || !parsed.items.every(item => item && item.input && item.input.requestId)) throw Error('Invalid save queue');
-    if (parsed.items.length) bulkQueue = parsed; else localStorage.removeItem(BULK_QUEUE_KEY);
+    if (parsed.items.length || (parsed.reportBatch && !parsed.reportConfirmed)) bulkQueue = parsed; else localStorage.removeItem(BULK_QUEUE_KEY);
   }
 } catch (_) { bulkQueueError = 'Could not read the saved batch queue. Check browser storage and MoneLog before recording entries.'; }
 function writeBulkQueue(queue) {
@@ -752,7 +752,7 @@ function writeBulkQueue(queue) {
   catch (_) { return false; }
 }
 function syncBulkQueueButtons() {
-  bulkSaveButton.disabled = bulkSaving || !!bulkQueue || !!bulkQueueError || bulkPreviewStale || !bulkHasPreview || !bulkPreviewRows.some(row => row.status === 'Preview only' && row.projected);
+  bulkSaveButton.disabled = bulkSaving || !!bulkQueue || !!bulkQueueError || bulkPreviewStale || !bulkHasPreview || !bulkPreviewRows.length;
   bulkExport.disabled = bulkSaving || bulkPreviewStale || !bulkHasPreview || !bulkPreviewRows.length;
   bulkResume.hidden = !bulkQueue; bulkDiscard.hidden = !bulkQueue;
   bulkResume.disabled = bulkDiscard.disabled = bulkSaving;
@@ -786,41 +786,72 @@ function refreshAfterBulkSave() {
 async function runBulkQueue() {
   if (bulkSaving || !bulkQueue) return;
   bulkSaving = true; syncBulkQueueButtons(); markBulkStale();
+  if (bulkQueue.reportBatch && !bulkQueue.reportConfirmed) {
+    bulkSaveStatus.textContent = 'Saving the complete audit batch, including rows needing review…';
+    try {
+      await new Promise((resolve,reject) => google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).saveMoneReportBatch(session, bulkQueue.reportBatch));
+      const next = {...bulkQueue, reportConfirmed:true};
+      if (!writeBulkQueue(next)) throw Error('Audit saved, but browser recovery data could not be updated. Resume to safely confirm it.');
+      bulkQueue = next; reportBatchSaved = true;
+    } catch (error) {
+      bulkSaving = false; syncBulkQueueButtons();
+      bulkSaveStatus.textContent = 'Audit save not confirmed: ' + (error && error.message || 'connection error') + '. No deductions were sent; retry the queue.';
+      return;
+    }
+  }
   while (bulkQueue && bulkQueue.items.length) {
-    const item = bulkQueue.items[0];
-    bulkSaveStatus.textContent = 'Saving ' + item.name + ' · ' + bulkQueue.items.length + ' remaining (' + bulkQueue.startDate + ' to ' + bulkQueue.endDate + ')…';
-    let result;
-    try { result = await applyBulkItem(item.input); }
+    const group = bulkQueue.items.slice(0, 10);
+    bulkSaveStatus.textContent = 'Saving a group of ' + group.length + ' · ' + bulkQueue.items.length + ' entries remaining…';
+    let response;
+    try { response = await new Promise((resolve,reject) => google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).applyMoneBatch(session, group.map(item => item.input))); }
     catch (error) {
       bulkSaving = false; syncBulkQueueButtons();
-      bulkSaveStatus.textContent = 'Paused at ' + item.name + ': ' + (error && error.message ? error.message : 'save could not be confirmed') + '. Check MoneLog, then resume or clear the queue.';
+      bulkSaveStatus.textContent = 'Group save not confirmed: ' + (error && error.message || 'connection error') + '. Check MoneLog, then resume. Previously confirmed requests will not be applied twice.';
       return;
     }
-    const next = {...bulkQueue, completed:bulkQueue.completed + 1, items:bulkQueue.items.slice(1)};
-    if (!writeBulkQueue(next)) {
+    if (!response || !Array.isArray(response.results) || response.results.length > group.length ||
+        response.results.some((entry,index) => !entry || entry.requestId !== group[index].input.requestId || !entry.result) ||
+        (!response.error && response.results.length !== group.length) ||
+        (response.error && (!group[response.results.length] || response.error.requestId !== group[response.results.length].input.requestId))) {
+      bulkSaving = false; syncBulkQueueButtons(); bulkSaveStatus.textContent = 'Unexpected save response. Check MoneLog, then resume safely.'; return;
+    }
+    for (const saved of response.results) {
+      const item = bulkQueue.items[0], result = saved.result;
+      const next = {...bulkQueue, completed:bulkQueue.completed + 1, items:bulkQueue.items.slice(1)};
+      if (!writeBulkQueue(next)) {
+        bulkSaving = false; syncBulkQueueButtons();
+        bulkSaveStatus.textContent = 'A group was processed, but the recovery queue could not be updated. Restore browser storage and resume safely.';
+        return;
+      }
+      bulkQueue = next;
+      const person = personnel && personnel.find(person => idKey(person.employeeId) === idKey(item.employeeId));
+      if (person) { person.vl = result.vl; person.sl = result.sl; }
+      if (item.line && bulkRows.children[item.line - 1] && bulkRows.children[item.line - 1].dataset.employeeId === idKey(item.employeeId)) bulkRows.children[item.line - 1].lastElementChild.textContent = result.alreadyApplied ? 'Already saved' : 'Saved to sheet';
+    }
+    if (response.error) {
       bulkSaving = false; syncBulkQueueButtons();
-      bulkSaveStatus.textContent = 'Saved ' + item.name + ', but could not update the recovery queue. Restore browser storage and resume safely.';
+      bulkSaveStatus.textContent = 'Paused at ' + bulkQueue.items[0].name + ': ' + response.error.message + '. Earlier entries remain saved. Check MoneLog, then resume or clear the queue.';
       return;
     }
-    bulkQueue = next;
-    const person = personnel && personnel.find(person => idKey(person.employeeId) === idKey(item.employeeId));
-    if (person) { person.vl = result.vl; person.sl = result.sl; }
-    if (item.line && bulkRows.children[item.line - 1] && bulkRows.children[item.line - 1].dataset.employeeId === idKey(item.employeeId)) bulkRows.children[item.line - 1].lastElementChild.textContent = result.alreadyApplied ? 'Already saved' : 'Saved to sheet';
   }
-  const completed = bulkQueue.completed;
+  const completed = bulkQueue.completed, auditSaved = !!bulkQueue.reportBatch;
   try { localStorage.removeItem(BULK_QUEUE_KEY); } catch (_) {}
   bulkQueue = null; bulkSaving = false; syncBulkQueueButtons();
-  bulkSaveStatus.textContent = completed + ' MONE entries saved or confirmed in the sheet. Refresh the preview for current balances.';
+  bulkSaveStatus.textContent = (auditSaved ? 'Audit batch saved. ' : '') + completed + ' MONE entries saved or confirmed in the sheet. Refresh the preview for current balances.';
   refreshAfterBulkSave();
 }
 bulkSaveButton.addEventListener('click', () => {
   if (bulkSaving || bulkQueue || bulkQueueError || bulkPreviewStale) return;
   const makeId = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(36).slice(2) + '-' + Math.random().toString(36).slice(2);
   const queue = createBulkSaveQueue(bulkPreviewRows, recordedMone, tableMoneStart.value, tableMoneEnd.value, makeId);
-  if (!queue.items.length) { bulkSaveStatus.textContent = 'There are no changed, eligible MONE entries to save.'; return; }
+  const office = bulkOffice.value.trim();
+  if (!office) { bulkSaveStatus.textContent = 'Enter the office in batch entry before saving.'; return; }
+  if (reportPending || reportBusy || reportQueueError) { bulkSaveStatus.textContent = 'Resolve the pending report batch before saving this batch.'; return; }
+  if (!reportBatchSaved) { queue.reportBatch = makeReportBatch(bulkPreviewRows, office, queue.startDate, queue.endDate, makeId()); queue.reportConfirmed = false; }
+  if (!queue.items.length && !queue.reportBatch) { bulkSaveStatus.textContent = 'There are no changed, eligible MONE entries to save.'; return; }
   const reviewCount = bulkPreviewRows.filter(row => row.status !== 'Preview only').length;
   const lines = queue.items.map(item => item.name + ' (' + item.employeeId + '): VL ' + item.targetVl + ', SL ' + item.targetSl).join('\n');
-  if (!window.confirm('Save ' + queue.items.length + ' MONE entries for ' + queue.startDate + ' to ' + queue.endDate + '?\n\n' + lines + '\n\n' + reviewCount + ' flagged row(s) will be skipped. Existing totals will be adjusted to the displayed values.')) return;
+  if (!window.confirm('Save ' + queue.items.length + ' MONE entries for ' + queue.startDate + ' to ' + queue.endDate + '?\n\n' + lines + '\n\n' + reviewCount + ' flagged row(s) will be saved for audit and skipped for deductions. The batch will be saved for reports before eligible balances are adjusted.')) return;
   if (!writeBulkQueue(queue)) { bulkSaveStatus.textContent = 'Cannot save the recovery queue in this browser. No entries were sent.'; return; }
   bulkQueue = queue; runBulkQueue();
 });
