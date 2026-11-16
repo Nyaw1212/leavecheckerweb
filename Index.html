@@ -1002,12 +1002,13 @@ function makePreviewXlsx(rows, sheetName = 'MONE Preview') {
     if (typeof value === 'number' && Number.isFinite(value)) return '<c r="' + ref + '"><v>' + value + '</v></c>';
     return '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + xmlText(value) + '</t></is></c>';
   }).join('') + '</row>').join('');
+  const columnSpecs = sheetName === 'MONE compilation' ? '<col min="1" max="2" width="12" customWidth="1"/><col min="3" max="3" width="36" customWidth="1"/><col min="4" max="4" width="16" customWidth="1"/><col min="5" max="5" width="28" customWidth="1"/><col min="6" max="7" width="22" customWidth="1"/><col min="8" max="8" width="60" customWidth="1"/><col min="9" max="9" width="30" customWidth="1"/><col min="10" max="10" width="28" customWidth="1"/><col min="11" max="11" width="40" customWidth="1"/>' : '<col min="1" max="2" width="12" customWidth="1"/><col min="3" max="5" width="28" customWidth="1"/><col min="6" max="13" width="16" customWidth="1"/><col min="14" max="14" width="48" customWidth="1"/>';
   const files = [
     ['[Content_Types].xml', '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'],
     ['_rels/.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
     ['xl/workbook.xml', '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="' + xmlText(sheetName.slice(0,31)) + '" sheetId="1" r:id="rId1"/></sheets></workbook>'],
     ['xl/_rels/workbook.xml.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'],
-    ['xl/worksheets/sheet1.xml', '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="2" topLeftCell="A3" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="2" width="12" customWidth="1"/><col min="3" max="5" width="28" customWidth="1"/><col min="6" max="13" width="16" customWidth="1"/><col min="14" max="14" width="48" customWidth="1"/></cols><sheetData>' + xmlRows + '</sheetData></worksheet>']
+    ['xl/worksheets/sheet1.xml', '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="2" topLeftCell="A3" state="frozen"/></sheetView></sheetViews><cols>' + columnSpecs + '</cols><sheetData>' + xmlRows + '</sheetData></worksheet>']
   ];
   const chunks = [], central = []; let offset = 0;
   function buffer(size) { const bytes = new Uint8Array(size); return [bytes, new DataView(bytes.buffer)]; }
@@ -1035,11 +1036,11 @@ bulkExport.addEventListener('click', () => {
   } catch (_) { bulkSaveStatus.textContent = 'Could not create the Excel file. Please try again.'; }
 });
 function compiledMoneExcelRows(result) {
-  const rows = [['Saved MONE batch snapshots', 'Review statuses and MoneLog before treating as deductions.'],
-    ['No.','Rank','Full name as submitted','Camp','Office','Days requested','Days approved (suggested)','Remarks','Control number / source file','Batch review status']];
+  const rows = [['Saved MONE batch snapshots', 'All saved batch rows, grouped by source. Suggested days and review remarks are not proof of a deduction.'],
+    ['No.','Rank','Full name as submitted','Camp','Office','Days requested','Days approved (suggested)','Remarks','Control number / source file','Batch review status','Batch ID']];
   result.rows.forEach(row => {
     const number = value => value !== '' && value != null && Number.isFinite(Number(value)) ? Number(value) : (value || '');
-    rows.push([row.number,row.rank,row.inputName,row.camp,row.office,number(row.requested),number(row.approved),row.remarks,row.controlNumber,row.review]);
+    rows.push([row.number,row.rank,row.inputName,row.camp,row.office,number(row.requested),number(row.approved),row.remarks,row.controlNumber,row.review,row.batchId]);
   });
   return rows;
 }
@@ -1064,9 +1065,9 @@ compilerButton.addEventListener('click', async () => {
     if (!result.rows.length) { document.getElementById('moneCompileStatus').textContent = 'No saved batch rows were found in MoneBatchData.'; return; }
     const bytes = makePreviewXlsx(compiledMoneExcelRows(result), 'MONE compilation');
     const url = URL.createObjectURL(new Blob([bytes], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
-    const link = document.createElement('a'); link.href = url; link.download = 'MONE_saved_batches.xlsx';
+    const link = document.createElement('a'); link.href = url; link.download = 'MONE_transmittal.xlsx';
     document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-    document.getElementById('moneCompileStatus').textContent = result.rows.length + ' saved batch rows exported. This report does not confirm deductions.';
+    document.getElementById('moneCompileStatus').textContent = result.rows.length + ' saved batch rows exported, including rows needing review. This report does not confirm deductions.';
   } catch (error) { document.getElementById('moneCompileStatus').textContent = 'Could not export saved batches: ' + (error && error.message || 'connection error'); }
   finally { compilerButton.disabled = false; }
 });
