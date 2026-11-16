@@ -515,14 +515,25 @@ function suggestBulkMone(vl, sl, requested) {
   if (nearEqual) moneVl += Math.min(usableVl - moneVl, target - moneVl - moneSl);
   return {target, moneVl, moneSl};
 }
-function createBulkPreview(entries, people, totals, selected = {}) {
+function moneInputKey(entry) {
+  return JSON.stringify([entry.surname, entry.given, entry.middle].map(value => String(value || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase()));
+}
+function createBulkPreview(entries, people, totals, selected = {}, savedMappings = {}) {
   const results = entries.map(entry => {
     if (!entry.valid) return {entry, status:'Invalid row: use surname, first name, middle name, amount; optional rank and number come first.'};
     const found = bulkCandidates(entry, people);
-    const suggestions = (found.length !== 1 || selected[entry.line]) ? bulkSuggestions(entry, people) : [];
-    const picked = selected[entry.line] ? suggestions.filter(person => idKey(person.employeeId) === selected[entry.line]) : [];
-    let person, manuallySelected = false;
+    const hasExplicit = Object.prototype.hasOwnProperty.call(selected, entry.line);
+    const remembered = !hasExplicit ? savedMappings[moneInputKey(entry)] : null;
+    const rememberedIdMatches = remembered && !remembered.invalid ? people.filter(person => idKey(person.employeeId) === idKey(remembered.employeeId)) : [];
+    const rememberedPeople = rememberedIdMatches.length === 1 && rememberedIdMatches[0].selectable && normalizedSearch(rememberedIdMatches[0].name) === normalizedSearch(remembered.employeeName) ? rememberedIdMatches : [];
+    const rememberedInvalid = !!remembered && (remembered.invalid || rememberedPeople.length !== 1);
+    let suggestions = (found.length !== 1 || selected[entry.line] || remembered) ? bulkSuggestions(entry, people) : [];
+    if (rememberedPeople.length === 1 && !suggestions.some(person => idKey(person.employeeId) === idKey(rememberedPeople[0].employeeId))) suggestions = [rememberedPeople[0], ...suggestions];
+    const picked = selected[entry.line] ? suggestions.filter(person => idKey(person.employeeId) === selected[entry.line] && person.selectable) : [];
+    let person, manuallySelected = false, rememberedMatch = false;
     if (picked.length === 1) { person = picked[0]; manuallySelected = true; }
+    else if (rememberedInvalid) return {entry, suggestions, status:'Saved match changed or is unavailable — select and verify again.'};
+    else if (rememberedPeople.length === 1) { person = rememberedPeople[0]; manuallySelected = true; rememberedMatch = true; }
     else if (found.length === 1 && !selected[entry.line]) person = found[0];
     else return {entry, suggestions, status:suggestions.length ? 'Possible matches — select and verify an employee.' : 'No suitable name matches; check spelling or personnel data.'};
     const noLeaveCard = (person.vl == null || person.vl === '') && (person.sl == null || person.sl === '');
@@ -542,7 +553,7 @@ function createBulkPreview(entries, people, totals, selected = {}) {
                        sl:Math.round((baseSl - suggestion.moneSl) * 1000) / 1000};
     const limited = suggestion.target < Number(entry.amount);
     const status = baseVl < 5 || baseSl < 5 ? 'Balance already below 5; review.' : limited ? 'Reduced: requested ' + entry.amount + ', eligible ' + suggestion.target + '; review.' : 'Preview only';
-    return {entry, person, projected, suggestion, status, suggestions, manuallySelected};
+    return {entry, person, projected, suggestion, status, suggestions, manuallySelected, rememberedMatch};
   });
   const counts = new Map();
   results.forEach(row => { if (row.person && row.person.selectable) { const key = idKey(row.person.employeeId); counts.set(key, (counts.get(key) || 0) + 1); } });
@@ -577,6 +588,33 @@ const bulkStatus = document.getElementById('bulkMoneStatus'), bulkRows = documen
 applyBulkFont();
 let bulkImportSource = '';
 let bulkHasPreview = false, bulkSelected = Object.create(null), bulkCategories = Object.create(null), bulkPreviewStale = true, bulkPreviewRows = [], reportBatchSaved = false;
+let rememberedMoneNames = Object.create(null), mappingMessage = Object.create(null), mappingVersion = Object.create(null), mappingTouched = new Set(), mappingQueue = Promise.resolve();
+async function loadMoneNameMappings() {
+  try {
+    const rows = await reviewCall('getMoneNameMappings');
+    rows.forEach(row => { if (!mappingTouched.has(row.key)) rememberedMoneNames[row.key] = row; });
+    if (bulkHasPreview && !bulkPreviewStale) renderBulkPreview();
+  } catch (error) {
+    msg.textContent = 'Could not load remembered name matches. Selections can still be reviewed manually.';
+  }
+}
+function saveMoneNameMapping(entry, person) {
+  const key = moneInputKey(entry), version = (mappingVersion[key] || 0) + 1;
+  mappingVersion[key] = version; mappingTouched.add(key); mappingMessage[key] = 'Saving remembered match…';
+  const pieces = [entry.surname, entry.given, entry.middle], employeeId = person ? person.employeeId : '', employeeName = person ? person.name : '';
+  mappingQueue = mappingQueue.catch(() => {}).then(async () => {
+    try {
+      const result = await reviewCall('rememberMoneNameMapping', pieces, employeeId, employeeName);
+      if (mappingVersion[key] !== version) return;
+      if (person) rememberedMoneNames[key] = result; else delete rememberedMoneNames[key];
+      mappingMessage[key] = person ? 'Match remembered for future batches.' : 'Remembered match removed.';
+    } catch (error) {
+      if (mappingVersion[key] !== version) return;
+      mappingMessage[key] = 'Match not saved: ' + (error && error.message || 'connection error') + '. Select it again to retry.';
+    }
+    if (bulkHasPreview && !bulkPreviewStale) renderBulkPreview();
+  });
+}
 function markBulkStale() {
   bulkPreviewStale = true;
   if (bulkHasPreview) bulkStatus.textContent = 'Values may have changed. Click Preview MONE again to refresh this preview.';
@@ -691,7 +729,7 @@ function renderBulkPreview() {
   if (bulkPasteFormat.value === 'word' && rebuildWordMone(bulkInput.value) === null) { bulkStatus.textContent = 'Could not safely rebuild the Word table. Copy the complete numbered six-column table, including blank cells.'; return; }
   const entries = parseBulkMone(bulkInput.value);
   if (!entries.length || entries.length > 500) { bulkStatus.textContent = 'Paste 1 to 500 rows.'; return; }
-  const results = createBulkPreview(entries, personnel, recordedMone, bulkSelected);
+  const results = createBulkPreview(entries, personnel, recordedMone, bulkSelected, rememberedMoneNames);
   bulkPreviewRows = results; bulkPreviewStale = false; reportBatchSaved = false;
   bulkRows.replaceChildren();
   const ids = new Set();
@@ -716,12 +754,17 @@ function renderBulkPreview() {
         const option = document.createElement('option'); option.value = idKey(person.employeeId);
         option.textContent = person.name + ' · ' + person.employeeId; select.appendChild(option);
       });
-      select.value = bulkSelected[row.entry.line] || '';
+      select.value = bulkSelected[row.entry.line] || (row.manuallySelected && row.person ? idKey(row.person.employeeId) : '');
       select.addEventListener('change', () => {
-        if (select.value) bulkSelected[row.entry.line] = select.value; else delete bulkSelected[row.entry.line];
+        const person = row.suggestions.find(candidate => idKey(candidate.employeeId) === select.value) || null;
+        bulkSelected[row.entry.line] = select.value || '';
+        saveMoneNameMapping(row.entry, person);
         renderBulkPreview();
       });
       matchCell.appendChild(select);
+      const rememberedNote = document.createElement('small');
+      rememberedNote.textContent = mappingMessage[moneInputKey(row.entry)] || (row.rememberedMatch ? 'Remembered match — verify before saving.' : 'Selecting a match remembers it for this input name.');
+      matchCell.appendChild(rememberedNote);
     } else matchCell.textContent = row.person ? row.person.name : '—';
     tr.appendChild(matchCell);
     const calcCell = document.createElement('td'); calcCell.className = 'mone-calculation'; calcCell.dataset.label = 'MONE calculation';
@@ -1183,6 +1226,7 @@ safeBalanceSave.addEventListener('click', async () => {
   finally { safeBalanceBusy = false; safeBalancePreview.disabled = false; safeBalanceFile.disabled = false; }
 });
 
+if (anonymousMode || session) loadMoneNameMappings();
 </script></body></html>
 
 
