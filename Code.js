@@ -336,7 +336,7 @@ function saveMoneReportBatch(session, input) {
     const d = new Date(v + 'T00:00:00Z');
     return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
   }
-  if (!/^[a-zA-Z0-9-]{16,100}$/.test(batchId) || !office || office.length > 150 || !dateOk(start) || !dateOk(end) || start > end || !Array.isArray(rows) || !rows.length || rows.length > 500) throw Error('Enter an office, a valid date range, and 1 to 500 preview rows.');
+  if (!/^[a-zA-Z0-9-]{16,100}$/.test(batchId) || office.length > 150 || !dateOk(start) || !dateOk(end) || start > end || !Array.isArray(rows) || !rows.length || rows.length > 500) throw Error('Enter a valid date range and 1 to 500 preview rows; office may be blank.');
   const fields = ['number','rank','inputName','matchedName','employeeId','category','requested','currentVl','currentSl','moneVl','moneSl','previewVl','previewSl','tag','manuallySelected','detail'];
   const tags = ['READY','INVALID_INPUT','NAME_REVIEW','DUPLICATE','EMPLOYEE_ID_REVIEW','BALANCE_UNAVAILABLE','INSUFFICIENT_BALANCE','REQUEST_ADJUSTED','NEEDS_REVIEW'];
   const groups = ['Commissioned','Non-commissioned','Civilian','Unclassified'];
