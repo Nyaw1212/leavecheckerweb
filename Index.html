@@ -145,8 +145,8 @@ input,button,.sign{font-size:1rem}
 @media(max-width:700px){.mone-preview-page:not([hidden]){padding-bottom:90px}.mone-preview-next{display:block;position:fixed;right:18px;bottom:18px;z-index:1002;min-height:48px;padding:10px 18px;box-shadow:0 4px 16px #0009}}
 </style></head><body><main class="wrap"><div class="eyebrow">PERSONNEL SERVICES</div><h1>Leave Balance Lookup</h1><p>View the latest published leave balance for a personnel record.</p><p id="message" role="status"></p>
 <section id="signin" class="panel" hidden><h2>Authorized staff sign-in</h2><p>Sign in using your approved Google account to continue.</p><a id="auth" class="sign">Sign in with Google</a></section>
-<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><details class="bulk-mone"><summary>Update LeaveBalances safely</summary>
-<p class="muted">Choose a Leave Checker CSV export and preview it first. Employees with any recorded MONE are protected and skipped; duplicate or uncertain names require review. This safeguard applies to this importer only.</p>
+<div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><details class="bulk-mone"><summary>Legacy LeaveBalances import (not used for active balances)</summary>
+<p class="muted">This tool updates only the old LeaveBalances sheet; the app now reads Leave2 and MoneLog. Choose a Leave Checker CSV export and preview it first. Employees with any recorded MONE are protected and skipped; duplicate or uncertain names require review. This safeguard applies to this importer only.</p>
 <label for="safeBalanceFile">Balance CSV file</label><input id="safeBalanceFile" type="file" accept=".csv,text/csv">
 <button id="safeBalancePreview" type="button">Preview balance update</button>
 <button id="safeBalanceSave" type="button" disabled>Save eligible rows</button>
@@ -204,7 +204,7 @@ function restoreDetailDraft(id) {
   moneExpectedVl = draft && draft.expectedVl; moneExpectedSl = draft && draft.expectedSl;
 }
 function detailDraft() { return {startDate:document.getElementById('moneStart').value, endDate:document.getElementById('moneEnd').value, vl:document.getElementById('moneVl').value, sl:document.getElementById('moneSl').value, requestId:moneRequestId, expectedVl:moneExpectedVl, expectedSl:moneExpectedSl}; }
-document.getElementById('form').addEventListener('submit',e=>{e.preventDefault();const currentLookup=++lookupGeneration;const lookupId=document.getElementById('employeeId').value;activeBalanceId='';moneRequestId='';document.getElementById('moneStatus').textContent='';msg.textContent='Looking up balance…'; document.getElementById('result').hidden=true;document.getElementById('submit').disabled=true;google.script.run.withSuccessHandler(r=>{if(currentLookup!==lookupGeneration)return;document.getElementById('submit').disabled=false;if(!r){msg.textContent='No unique match found. Check the employee number, or contact personnel services.';return;}msg.textContent='';activeBalanceId=lookupId;restoreDetailDraft(lookupId);document.getElementById('employee').textContent=r.name;document.getElementById('period').textContent='AS OF '+(r.as_of||'unavailable');document.getElementById('updated').textContent='Snapshot updated: '+(r.updated_at||'unavailable');for(const key of ['vl','sl','fl','wl','spl'])document.getElementById(key).textContent=r[key]===null?'—':r[key];document.getElementById('selectPrompt').hidden=true;document.getElementById('result').hidden=false;}).withFailureHandler(()=>{if(currentLookup!==lookupGeneration)return;document.getElementById('submit').disabled=false;msg.textContent='Lookup unavailable or session expired. Sign in again or contact the administrator.';}).lookupBalance(session,lookupId)});
+document.getElementById('form').addEventListener('submit',e=>{e.preventDefault();const currentLookup=++lookupGeneration;const lookupId=document.getElementById('employeeId').value;activeBalanceId='';moneRequestId='';document.getElementById('moneStatus').textContent='';msg.textContent='Looking up balance…'; document.getElementById('result').hidden=true;document.getElementById('submit').disabled=true;google.script.run.withSuccessHandler(r=>{if(currentLookup!==lookupGeneration)return;document.getElementById('submit').disabled=false;if(!r){msg.textContent='No unique match found. Check the employee number, or contact personnel services.';return;}msg.textContent='';activeBalanceId=lookupId;restoreDetailDraft(lookupId);if(r.moneBlocked)document.getElementById('moneStatus').textContent='MONE log needs review before this balance can be used.';else if(r.moneRecorded)document.getElementById('moneStatus').textContent='MONE already recorded. Showing the latest MoneLog balance.';document.getElementById('employee').textContent=r.name;document.getElementById('period').textContent='AS OF '+(r.as_of||'unavailable');document.getElementById('updated').textContent='Snapshot updated: '+(r.updated_at||'unavailable');for(const key of ['vl','sl','fl','wl','spl'])document.getElementById(key).textContent=r[key]===null?'—':r[key];document.getElementById('selectPrompt').hidden=true;document.getElementById('result').hidden=false;}).withFailureHandler(()=>{if(currentLookup!==lookupGeneration)return;document.getElementById('submit').disabled=false;msg.textContent='Lookup unavailable or session expired. Sign in again or contact the administrator.';}).lookupBalance(session,lookupId)});
 let personnel = null, matches = [], rendered = 0, selectedPersonId = '', bulkFilterIds = null;
 const LIST_BATCH = 100;
 const nameSearch = document.getElementById('nameSearch'), nameList = document.getElementById('nameList'), nameRows = document.getElementById('nameRows'), searchStatus = document.getElementById('searchStatus');
@@ -371,7 +371,7 @@ function appendPersonnelBatch() {
     const button = document.createElement('button');
     button.type = 'button'; button.className = 'person-row'; button.disabled = !person.selectable;
     if (person.selectable && person.employeeId === selectedPersonId) row.classList.add('selected');
-    const name = document.createElement('span'); name.textContent = person.name; button.appendChild(name);
+    const name = document.createElement('span'); name.textContent = person.name + (person.moneRecorded ? ' · MONE recorded' : '') + (person.moneBlocked ? ' · MONE log needs review' : ''); button.appendChild(name);
     const isManualId = /^MAN-/i.test(String(person.employeeId || '').trim());
     if (!person.selectable || !isManualId) {
       const id = document.createElement('span');
@@ -536,6 +536,7 @@ function createBulkPreview(entries, people, totals, selected = {}, savedMappings
     else if (rememberedPeople.length === 1) { person = rememberedPeople[0]; manuallySelected = true; rememberedMatch = true; }
     else if (found.length === 1 && !selected[entry.line]) person = found[0];
     else return {entry, suggestions, status:suggestions.length ? 'Possible matches — select and verify an employee.' : 'No suitable name matches; check spelling or personnel data.'};
+    if (person.moneBlocked) return {entry, person, suggestions, manuallySelected, status:'MONE log has a pending or invalid entry; review before continuing.'};
     const noLeaveCard = (person.vl == null || person.vl === '') && (person.sl == null || person.sl === '');
     if (noLeaveCard) return {entry, person, suggestions, manuallySelected, status:'No leave card / leave credits on file; verify.'};
     if (!person.selectable || !idKey(person.employeeId)) return {entry, person, suggestions, manuallySelected, status:'Employee number missing or duplicated; review.'};
@@ -543,6 +544,11 @@ function createBulkPreview(entries, people, totals, selected = {}, savedMappings
     if (person.vl == null || person.vl === '' || person.sl == null || person.sl === '' || !Number.isFinite(vl) || !Number.isFinite(sl)) return {entry, person, suggestions, manuallySelected, status:'VL or SL balance unavailable; review.'};
     const old = totals[idKey(person.employeeId)] || {vl:0, sl:0};
     const previousVl = Number(old.vl), previousSl = Number(old.sl);
+    if (Object.prototype.hasOwnProperty.call(totals, idKey(person.employeeId))) {
+      return {entry, person, suggestions, manuallySelected, rememberedMatch,
+        suggestion:{moneVl:previousVl, moneSl:previousSl, target:previousVl + previousSl},
+        projected:{vl, sl}, status:'MONE already recorded for this period; review existing entry.'};
+    }
     if (!Number.isFinite(previousVl) || !Number.isFinite(previousSl) || previousVl < 0 || previousSl < 0) return {entry, person, suggestions, manuallySelected, status:'Recorded MONE total unavailable; review.'};
     // Current balances already reflect the selected period's saved MONE. Restore it
     // for the suggestion, then apply the new totals once.
@@ -787,6 +793,7 @@ function renderBulkPreview() {
         matchCell.appendChild(retry);
       }
     } else matchCell.textContent = row.person ? row.person.name : '—';
+    if (row.person && row.person.moneRecorded) { const warning = document.createElement('small'); warning.style.display = 'block'; warning.textContent = 'MONE already recorded; showing MoneLog balance.'; matchCell.appendChild(warning); }
     tr.appendChild(matchCell);
     const calcCell = document.createElement('td'); calcCell.className = 'mone-calculation'; calcCell.dataset.label = 'MONE calculation';
     const summary = document.createElement('div'); summary.className = 'mone-amounts';
@@ -1219,7 +1226,7 @@ moneForm.addEventListener('submit', event => {
     if (lookupVersion === lookupGeneration && subjectId === activeBalanceId) {
       document.getElementById('vl').textContent = result.vl;
       document.getElementById('sl').textContent = result.sl;
-      moneStatus.textContent = result.alreadyApplied ? 'This MONE entry was already recorded.' : 'MONE recorded. The web balance and MoneLog were updated.';
+      moneStatus.textContent = result.alreadyApplied ? 'This MONE entry was already recorded.' : 'MONE recorded in MoneLog. Leave2 remains unchanged.';
     } else {
       msg.textContent = 'MONE recorded for ' + result.name + '.';
     }
