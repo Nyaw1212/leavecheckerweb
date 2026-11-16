@@ -720,3 +720,75 @@ function saveBalanceImport(session, csvText, token) {
     return {saved};
   } finally { lock.releaseLock(); }
 }
+
+
+const MONE_NAME_MAP_SHEET = 'MoneNameMappings';
+const MONE_NAME_MAP_HEADERS = ['input_key','employee_id','employee_name','recorded_at'];
+function moneNameKey_(input) {
+  if (!Array.isArray(input) || input.length !== 3) throw Error('The input name is incomplete.');
+  const pieces = input.map(value => String(value || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase());
+  if (!pieces[0] || !pieces[1] || pieces.some(value => value.length > 150)) throw Error('Enter a valid surname and first name.');
+  return JSON.stringify(pieces);
+}
+function moneMapSheet_(book, create) {
+  let sheet = book.getSheetByName(MONE_NAME_MAP_SHEET);
+  if (!sheet && create) {
+    sheet = book.insertSheet(MONE_NAME_MAP_SHEET);
+    sheet.getRange(1, 1, 1, MONE_NAME_MAP_HEADERS.length).setValues([MONE_NAME_MAP_HEADERS]);
+  }
+  if (!sheet) return null;
+  const rows = sheet.getDataRange().getValues();
+  if (MONE_NAME_MAP_HEADERS.some((value, index) => String((rows[0] || [])[index] || '').trim() !== value)) throw Error('MoneNameMappings headers need review.');
+  return sheet;
+}
+function getMoneNameMappings(session) {
+  const config = authorizedConfig_(session);
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const sheet = moneMapSheet_(SpreadsheetApp.openById(config.spreadsheet), false);
+    if (!sheet) return [];
+    const rows = sheet.getDataRange().getValues().slice(1), seen = Object.create(null), result = [];
+    rows.forEach(row => { const key = String(row[0] || ''); if (key) seen[key] = (seen[key] || 0) + 1; });
+    rows.forEach(row => {
+      const key = String(row[0] || ''), employeeId = String(row[1] || '').trim(), employeeName = String(row[2] || '').trim();
+      if (key && seen[key] !== 1) { if (!result.some(item => item.key === key)) result.push({key, invalid:true}); }
+      else if (key && employeeId && employeeName) result.push({key, employeeId, employeeName});
+      else if (key) result.push({key, invalid:true});
+    });
+    return result;
+  } finally { lock.releaseLock(); }
+}
+function rememberMoneNameMapping(session, input, employeeId, expectedName) {
+  const config = authorizedConfig_(session), key = moneNameKey_(input);
+  employeeId = String(employeeId || '').trim(); expectedName = String(expectedName || '').trim();
+  if (employeeId && (!/^[a-z0-9 -]{1,100}$/i.test(employeeId) || !expectedName || /^[=+\-@]/.test(expectedName))) throw Error('The selected employee is invalid.');
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const book = SpreadsheetApp.openById(config.spreadsheet);
+    if (employeeId) {
+      const balance = book.getSheetByName(SHEET_NAME);
+      if (!balance) throw Error('LeaveBalances is unavailable.');
+      const rows = balance.getDataRange().getValues(), header = (rows.shift() || []).map(v => String(v || '').trim().toLowerCase());
+      const idIndex = header.indexOf('employee_id'), nameIndex = header.indexOf('name');
+      if (idIndex < 0 || nameIndex < 0) throw Error('LeaveBalances headers need review.');
+      const matches = rows.filter(row => normalizeEmployeeId_(row[idIndex]) === normalizeEmployeeId_(employeeId));
+      if (matches.length !== 1 || normalize_(matches[0][nameIndex]) !== normalize_(expectedName)) throw Error('The employee number or name changed; reload and review the employee.');
+    }
+    const sheet = moneMapSheet_(book, !!employeeId);
+    if (!sheet) return {removed:true};
+    const rows = sheet.getDataRange().getValues();
+    const matches = [];
+    rows.slice(1).forEach((row,index) => { if (String(row[0] || '') === key) matches.push(index+2); });
+    if (matches.length > 1) throw Error('This input name has duplicate saved mappings; review MoneNameMappings.');
+    if (!employeeId) {
+      if (matches.length) sheet.deleteRow(matches[0]);
+      return {removed:true};
+    }
+    const target = matches.length ? matches[0] : sheet.getLastRow() + 1;
+    const range = sheet.getRange(target, 1, 1, 4);
+    if (range.getFormulas()[0].some(Boolean)) throw Error('The mapping row contains a formula; review it first.');
+    sheet.getRange(target, 2).setNumberFormat('@');
+    range.setValues([[key, employeeId, expectedName, new Date()]]);
+    return {key, employeeId, employeeName:expectedName};
+  } finally { lock.releaseLock(); }
+}
