@@ -140,6 +140,9 @@ input,button,.sign{font-size:1rem}
 .bulk-output table.mone-credit-table th:first-child{width:42%}
 .bulk-output .mone-amounts span,.bulk-output .mone-amounts strong{font-size:1rem}
 @media(max-width:700px){.bulk-output table.mone-credit-table{font-size:clamp(14px, 4vw, 18px)}}
+
+.mone-preview-next{display:none}
+@media(max-width:700px){.mone-preview-page:not([hidden]){padding-bottom:90px}.mone-preview-next{display:block;position:fixed;right:18px;bottom:18px;z-index:1002;min-height:48px;padding:10px 18px;box-shadow:0 4px 16px #0009}}
 </style></head><body><main class="wrap"><div class="eyebrow">PERSONNEL SERVICES</div><h1>Leave Balance Lookup</h1><p>View the latest published leave balance for a personnel record.</p><p id="message" role="status"></p>
 <section id="signin" class="panel" hidden><h2>Authorized staff sign-in</h2><p>Sign in using your approved Google account to continue.</p><a id="auth" class="sign">Sign in with Google</a></section>
 <div id="workspace" class="workspace" hidden><aside class="sidebar"><label for="nameSearch">Search personnel by name</label><input id="nameSearch" type="search" autocomplete="off" placeholder="Search name"><p id="searchStatus" class="muted" aria-live="polite">Loading personnel…</p><details class="bulk-mone"><summary>Multiple search &amp; preview MONE</summary><p class="muted">Paste a numbered Word table, Excel rows or a pipe-separated table: optional number and rank, surname, first name, middle name, amount. Rank is shown for reference and does not verify identity. For unmatched names, select a suggested employee after checking the full name and employee number. The amount is the requested MONE total for the date range below. The preview keeps 5 VL and 5 SL, uses SL only when SL is higher than VL. Otherwise it splits the allocation when the balances differ by 20 credits or less and prioritizes VL when the difference is greater than 20. Allocation uses increments of 5. Preview does not save changes. Use Save eligible rows to record reviewed entries in the sheet.</p><label for="bulkMoneFile">Import a Word or Excel attachment (.docx or .xlsx, up to 3 MB)</label><input id="bulkMoneFile" type="file" accept=".docx,.xlsx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><p id="bulkImportStatus" class="muted" role="status" aria-live="polite">Choose a DOCX or XLSX from your device or Google Drive. Import prepares a preview; nothing is deducted.</p><div class="bulk-controls"><label for="driveMoneFiles">Files in MONE Drive folder <select id="driveMoneFiles"><option value="">Refresh to list folder files</option></select></label><button type="button" id="driveMoneRefresh" class="quiet">Refresh Drive folder</button><button type="button" id="driveMoneImport"><span id="driveImportSpinner" class="import-spinner" aria-hidden="true" hidden></span><span id="driveImportLabel">Import selected file</span></button><button type="button" id="driveMoneReviewed" class="quiet">Mark Drive file reviewed</button></div><p id="driveMoneStatus" class="muted" role="status" aria-live="polite">Put DOCX or XLSX files in the configured Drive folder, then refresh. Each file is reviewed separately. Access follows the app's current access setting.</p><div class="bulk-controls"><label for="moneReviewList">Pending file reviews <select id="moneReviewList"><option value="">Select a pending import</option></select></label><button type="button" id="moneReviewRefresh" class="quiet">Refresh pending</button><button type="button" id="moneReviewOpen" class="quiet">Open batch</button><button type="button" id="moneReviewDone" class="quiet">Mark reviewed</button><button type="button" id="moneReviewRetry" class="quiet" hidden>Retry queue save</button></div><p id="moneReviewStatus" class="muted" role="status" aria-live="polite">The queue stores the original imported rows across devices. Changes made in the preview are not saved to this queue.</p><label for="bulkMoneInput">Paste or review personnel rows</label><textarea id="bulkMoneInput" placeholder="1&#9;CO1&#9;Acero&#9;Jolina&#9;Lomotos&#9;10
@@ -153,7 +156,7 @@ input,button,.sign{font-size:1rem}
 
 </div><button id="moneSubmit" type="submit">Record MONE</button><p id="moneStatus" role="status" aria-live="polite"></p>
 <p class="muted">Unsubmitted inputs are saved on this browser. A later VER2 upload can replace these web balances. MONE entries remain in the sheet log.</p></form></section>
-</div></div><section id="monePreviewPage" class="mone-preview-page" role="dialog" aria-modal="true" aria-labelledby="monePreviewTitle" hidden><div class="mone-preview-heading"><h2 id="monePreviewTitle">MONE Preview</h2><button id="bulkPreviewClose" type="button" class="quiet">Back to batch entry</button></div><div id="monePreviewContent"></div></section></main>
+</div></div><section id="monePreviewPage" class="mone-preview-page" role="dialog" aria-modal="true" aria-labelledby="monePreviewTitle" hidden><div class="mone-preview-heading"><h2 id="monePreviewTitle">MONE Preview</h2><button id="bulkPreviewClose" type="button" class="quiet">Back to batch entry</button></div><div id="monePreviewContent"></div><button id="monePreviewNext" class="mone-preview-next" type="button" aria-label="Go to next personnel entry">Next entry ↓</button></section></main>
 <script>
 const anonymousMode = <?!= JSON.stringify(anonymousMode) ?>;
 let session = <?!= JSON.stringify(initialSession).replace(/</g, '\\u003c') ?>;
@@ -273,6 +276,7 @@ function saveTablePeriod() {
   try { localStorage.setItem('leavechecker:mone-period:v1', JSON.stringify({startDate:tableMoneStart.value,endDate:tableMoneEnd.value})); } catch (_) { msg.textContent = 'Could not save the dates in this browser.'; }
 }
 let recordedMone = {}, recordedStatus = 'loading', recordedGeneration = 0;
+let previewSavedScroll = 0;
 let autoDrivePreviewPending = false;
 function idKey(value) { return String(value || '').normalize('NFKC').replace(/[\s-]+/g, '').toLowerCase(); }
 // Editable totals use their own cache so older additional-deduction drafts are never mistaken for totals.
@@ -570,7 +574,7 @@ function markBulkStale() {
   if (bulkHasPreview) bulkStatus.textContent = 'Values may have changed. Click Preview MONE again to refresh this preview.';
   syncBulkQueueButtons(); syncReportButtons();
 }
-bulkInput.addEventListener('input', () => { autoDrivePreviewPending = false; bulkImportSource = ''; bulkSelected = Object.create(null); bulkCategories = Object.create(null); markBulkStale(); });
+bulkInput.addEventListener('input', () => { previewSavedScroll = 0; autoDrivePreviewPending = false; bulkImportSource = ''; bulkSelected = Object.create(null); bulkCategories = Object.create(null); markBulkStale(); });
 bulkPasteFormat.addEventListener('change', markBulkStale);
 const bulkFile = document.getElementById('bulkMoneFile'), bulkImportStatus = document.getElementById('bulkImportStatus');
 const driveFiles = document.getElementById('driveMoneFiles'), driveStatus = document.getElementById('driveMoneStatus');
@@ -672,6 +676,8 @@ bulkFile.addEventListener('change', async () => {
 });
 tableMoneStart.addEventListener('change', markBulkStale); tableMoneEnd.addEventListener('change', markBulkStale);
 function renderBulkPreview() {
+  const pageForScroll = document.getElementById('monePreviewPage');
+  const savedScroll = pageForScroll && !pageForScroll.hidden ? pageForScroll.scrollTop : null;
   if (!personnel) { bulkStatus.textContent = 'Personnel are still loading.'; return; }
   if (recordedStatus !== 'ready') { bulkStatus.textContent = 'MONE totals are unavailable. Select valid dates and wait for totals to load.'; return; }
   if (bulkPasteFormat.value === 'word' && rebuildWordMone(bulkInput.value) === null) { bulkStatus.textContent = 'Could not safely rebuild the Word table. Copy the complete numbered six-column table, including blank cells.'; return; }
@@ -743,6 +749,7 @@ function renderBulkPreview() {
   const failedWord = entries.length >= 6 && entries.every(entry => !entry.valid) && !/[\t|]/.test(bulkInput.value) ? 'Could not safely rebuild these Word cells; copy the complete numbered six-column table. ' : '';
   bulkStatus.textContent = wordNotice + failedWord + results.length + ' rows · ' + review + ' need review · ' + tableMoneStart.value + ' to ' + tableMoneEnd.value + '. Verify selected names and employee numbers. Preview has not been saved.';
   syncBulkQueueButtons(); syncReportButtons();
+  if (savedScroll !== null) requestAnimationFrame(() => { if (!pageForScroll.hidden) { pageForScroll.scrollTop = savedScroll; updateMoneNext(); } });
 }
 // Persist each request before sending it. The server uses request IDs to make
 // retries safe when a response is lost. Unreviewed rows never enter the queue.
@@ -1018,6 +1025,20 @@ else if (reportPending) reportStatus.textContent = 'A batch save is pending. Ret
 syncReportButtons();
 const monePreviewPage = document.getElementById('monePreviewPage'), monePreviewContent = document.getElementById('monePreviewContent'), previewOpen = document.getElementById('bulkPreviewOpen'), previewClose = document.getElementById('bulkPreviewClose');
 const bulkOutput = bulkResults.parentElement;
+const previewNext = document.getElementById('monePreviewNext');
+function nextMoneEntry() {
+  const top = monePreviewPage.getBoundingClientRect().top + 24;
+  return Array.from(bulkRows.children).find(row => row.getBoundingClientRect().top > top + 1) || null;
+}
+function updateMoneNext() { previewNext.disabled = !nextMoneEntry(); }
+previewNext.addEventListener('click', () => {
+  const next = nextMoneEntry();
+  if (!next) return;
+  const top = monePreviewPage.scrollTop + next.getBoundingClientRect().top - monePreviewPage.getBoundingClientRect().top - 20;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  monePreviewPage.scrollTo({top:Math.max(0, top), behavior:reduced ? 'auto' : 'smooth'});
+});
+monePreviewPage.addEventListener('scroll', () => { if (!monePreviewPage.hidden) updateMoneNext(); }, {passive:true});
 function tryAutoDrivePreview() {
   if (!autoDrivePreviewPending) return;
   if (!personnel || recordedStatus === 'loading') { driveStatus.textContent = 'File loaded. Waiting for personnel and MONE balances…'; return; }
@@ -1032,10 +1053,11 @@ function openMonePreview() {
   monePreviewPage.hidden = false;
   monePreviewContent.append(bulkStatus, bulkOutput, bulkSaveBottom);
   placeBulkSaveControls();
-  monePreviewPage.scrollTop = 0;
-  previewClose.focus();
+  previewClose.focus({preventScroll:true});
+  requestAnimationFrame(() => { if (!monePreviewPage.hidden) { monePreviewPage.scrollTop = previewSavedScroll; updateMoneNext(); } });
 }
 function closeMonePreview() {
+  previewSavedScroll = monePreviewPage.scrollTop;
   monePreviewPage.hidden = true;
   document.getElementById('bulkMoneStatusAnchor').after(bulkStatus);
   document.getElementById('bulkOutputAnchor').after(bulkOutput);
