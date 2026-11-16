@@ -1028,10 +1028,10 @@ bulkExport.addEventListener('click', () => {
 });
 function compiledMoneExcelRows(result) {
   const rows = [['Saved MONE batch snapshots', 'Review statuses and MoneLog before treating as deductions.'],
-    ['No.','Rank','Full name as submitted','Days requested','Remarks','Control number / source file','Batch review status']];
+    ['No.','Rank','Full name as submitted','Days requested','Days approved (suggested)','Remarks','Control number / source file','Batch review status']];
   result.rows.forEach(row => {
     const number = value => value !== '' && value != null && Number.isFinite(Number(value)) ? Number(value) : (value || '');
-    rows.push([row.number,row.rank,row.inputName,number(row.requested),row.remarks,row.controlNumber,row.review]);
+    rows.push([row.number,row.rank,row.inputName,number(row.requested),number(row.approved),row.remarks,row.controlNumber,row.review]);
   });
   return rows;
 }
