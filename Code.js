@@ -367,10 +367,29 @@ function saveMoneReportBatch(session, input) {
       if (prior.length !== cleanRows.length || prior.some(row => String(row[1]) !== fingerprint)) throw Error('Batch ID already exists with different or incomplete data. Review MoneBatchData.');
       return {batchId,rowCount:prior.length,alreadySaved:true};
     }
+    // Mark possible prior-batch duplicates for the same exact MONE period.
+    // Employee number is authoritative when both rows have one. Name-only
+    // comparisons are possible matches, not proof of identity.
+    const dateValue = value => value instanceof Date ? Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(value == null ? '' : value).trim();
+    const byId = new Map(), byName = new Map();
+    values.slice(1).forEach(priorRow => {
+      if (String(priorRow[0]) === batchId || dateValue(priorRow[4]) !== start || dateValue(priorRow[5]) !== end) return;
+      const item = {batch:String(priorRow[0]), id:normalizeEmployeeId_(priorRow[10]), name:normalize_(priorRow[8])};
+      if (!item.batch) return;
+      if (item.id && !byId.has(item.id)) byId.set(item.id,item);
+      if (item.name) { if (!byName.has(item.name)) byName.set(item.name,[]); byName.get(item.name).push(item); }
+    });
     // Sheets can interpret leading = as a formula. Keep all imported data as text.
     const safe = value => /^[\s]*[=+\-@]/.test(String(value)) ? "'" + String(value) : value;
     const stamp = new Date();
-    const output = cleanRows.map(row => [batchId,fingerprint,stamp,safe(office),start,end].concat(fields.map(key => safe(row[key]))));
+    const output = cleanRows.map(row => {
+      const id = normalizeEmployeeId_(row.employeeId), name = normalize_(row.inputName);
+      const matchById = id && byId.get(id);
+      const matchByName = name && (byName.get(name) || []).find(item => !id || !item.id);
+      const match = matchById || matchByName;
+      const detail = match ? ('POSSIBLE_DUPLICATE_PREVIOUS_BATCH: ' + match.batch + ' (' + (matchById ? 'employee ID' : 'name; verify identity') + '). ' + row.detail).slice(0,500) : row.detail;
+      return [batchId,fingerprint,stamp,safe(office),start,end].concat(fields.map(key => safe(key === 'detail' ? detail : row[key])));
+    });
     const finalRow = sheet.getLastRow() + output.length;
     if (finalRow > sheet.getMaxRows()) sheet.insertRowsAfter(sheet.getMaxRows(), finalRow - sheet.getMaxRows());
     sheet.getRange(sheet.getLastRow()+1,1,output.length,headers.length).setValues(output);
