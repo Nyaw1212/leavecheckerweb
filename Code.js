@@ -800,19 +800,20 @@ function getMoneCompilerData(session) {
   const sheet = book.getSheetByName('MoneBatchData');
   if (!sheet) return {rows:[]};
   const values = sheet.getDataRange().getValues(), headings = (values.shift() || []).map(v => String(v || '').trim());
-  const fields = ['number','rank','inputName','requested','moneVl','moneSl','tag','detail'];
+  const fields = ['number','rank','inputName','requested','moneVl','moneSl','tag','detail','office'];
   const idx = Object.create(null); fields.forEach(field => { idx[field] = headings.indexOf(field); });
   if (fields.some(field => idx[field] < 0)) throw Error('MoneBatchData is missing expected columns. Review the sheet before exporting.');
   const text = value => String(value == null ? '' : value).trim();
   const rows = values.filter(row => fields.some(field => text(row[idx[field]]))).map(row => {
     const get = field => text(row[idx[field]]), detail = get('detail');
-    const source = detail.match(/(?:^|\s·\s)Source file:\s*([\s\S]*?)(?=\s·\s(?:Name parts:|Source remarks:)|$)/i);
+    const source = detail.match(/(?:^|\s·\s)Source file:\s*([\s\S]*?)(?=\s·\s(?:Camp:|Name parts:|Source remarks:)|$)/i);
     const remarks = detail.match(/(?:^|\s·\s)Source remarks:\s*([\s\S]*)$/i);
+    const campMatch = detail.match(/(?:^|\s·\s)Camp:\s*(MAXIMUM|MED|MIN|RDC)(?=\s·\s|$)/i);
     const duplicate = /POSSIBLE_DUPLICATE_PREVIOUS_BATCH/i.test(detail) ? 'Possible duplicate; review' : '';
     const vl = get('moneVl'), sl = get('moneSl');
     const approved = vl !== '' && sl !== '' && Number.isFinite(Number(vl)) && Number.isFinite(Number(sl)) && Number(vl) >= 0 && Number(sl) >= 0 ? Math.round((Number(vl) + Number(sl)) * 1000) / 1000 : '';
     return {number:get('number'), rank:get('rank'), inputName:get('inputName'), requested:get('requested'), approved,
-      remarks:remarks ? remarks[1].trim() : '', controlNumber:source ? source[1].trim() : '',
+      remarks:remarks ? remarks[1].trim() : '', controlNumber:source ? source[1].trim() : '', camp:campMatch ? campMatch[1].toUpperCase() : '', office:get('office'),
       review:[get('tag'), duplicate].filter(Boolean).join(' · ')};
   });
   return {rows};
