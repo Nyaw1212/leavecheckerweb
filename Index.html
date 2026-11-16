@@ -588,29 +588,42 @@ const bulkStatus = document.getElementById('bulkMoneStatus'), bulkRows = documen
 applyBulkFont();
 let bulkImportSource = '';
 let bulkHasPreview = false, bulkSelected = Object.create(null), bulkCategories = Object.create(null), bulkPreviewStale = true, bulkPreviewRows = [], reportBatchSaved = false;
-let rememberedMoneNames = Object.create(null), mappingMessage = Object.create(null), mappingVersion = Object.create(null), mappingTouched = new Set(), mappingQueue = Promise.resolve();
+let rememberedMoneNames = Object.create(null), mappingMessage = Object.create(null), mappingFailed = Object.create(null), mappingVersion = Object.create(null), mappingTouched = new Set(), mappingQueue = Promise.resolve();
+function mappingCall(action, pieces, employeeId, employeeName) {
+  return new Promise((resolve, reject) => {
+    const runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
+    if (action === 'load') {
+      if (typeof runner.getMoneNameMappings !== 'function') return reject(new Error('Name-matching update is not available in this deployment. Push Code.js and deploy a new version.'));
+      runner.getMoneNameMappings(session);
+    } else {
+      if (typeof runner.rememberMoneNameMapping !== 'function') return reject(new Error('Name-matching update is not available in this deployment. Push Code.js and deploy a new version.'));
+      runner.rememberMoneNameMapping(session, pieces, employeeId, employeeName);
+    }
+  });
+}
 async function loadMoneNameMappings() {
   try {
-    const rows = await reviewCall('getMoneNameMappings');
+    const rows = await mappingCall('load');
     rows.forEach(row => { if (!mappingTouched.has(row.key)) rememberedMoneNames[row.key] = row; });
     if (bulkHasPreview && !bulkPreviewStale) renderBulkPreview();
   } catch (error) {
-    msg.textContent = 'Could not load remembered name matches. Selections can still be reviewed manually.';
+    msg.textContent = 'Could not load remembered name matches: ' + (error && error.message || 'connection error') + ' Selections can still be reviewed manually.';
   }
 }
 function saveMoneNameMapping(entry, person) {
   const key = moneInputKey(entry), version = (mappingVersion[key] || 0) + 1;
-  mappingVersion[key] = version; mappingTouched.add(key); mappingMessage[key] = 'Saving remembered match…';
+  mappingVersion[key] = version; mappingTouched.add(key); mappingMessage[key] = 'Saving remembered match…'; mappingFailed[key] = false;
   const pieces = [entry.surname, entry.given, entry.middle], employeeId = person ? person.employeeId : '', employeeName = person ? person.name : '';
   mappingQueue = mappingQueue.catch(() => {}).then(async () => {
     try {
-      const result = await reviewCall('rememberMoneNameMapping', pieces, employeeId, employeeName);
+      const result = await mappingCall('save', pieces, employeeId, employeeName);
       if (mappingVersion[key] !== version) return;
       if (person) rememberedMoneNames[key] = result; else delete rememberedMoneNames[key];
       mappingMessage[key] = person ? 'Match remembered for future batches.' : 'Remembered match removed.';
     } catch (error) {
       if (mappingVersion[key] !== version) return;
-      mappingMessage[key] = 'Match not saved: ' + (error && error.message || 'connection error') + '. Select it again to retry.';
+      mappingFailed[key] = true;
+      mappingMessage[key] = 'Match not saved: ' + (error && error.message || 'connection error');
     }
     if (bulkHasPreview && !bulkPreviewStale) renderBulkPreview();
   });
@@ -763,8 +776,15 @@ function renderBulkPreview() {
       });
       matchCell.appendChild(select);
       const rememberedNote = document.createElement('small');
+      rememberedNote.style.display = 'block';
+      rememberedNote.style.overflowWrap = 'anywhere';
       rememberedNote.textContent = mappingMessage[moneInputKey(row.entry)] || (row.rememberedMatch ? 'Remembered match — verify before saving.' : 'Selecting a match remembers it for this input name.');
       matchCell.appendChild(rememberedNote);
+      if (mappingFailed[moneInputKey(row.entry)]) {
+        const retry = document.createElement('button'); retry.type = 'button'; retry.className = 'quiet'; retry.textContent = 'Retry saving match';
+        retry.addEventListener('click', () => { const person = row.suggestions.find(candidate => idKey(candidate.employeeId) === select.value) || null; saveMoneNameMapping(row.entry, person); renderBulkPreview(); });
+        matchCell.appendChild(retry);
+      }
     } else matchCell.textContent = row.person ? row.person.name : '—';
     tr.appendChild(matchCell);
     const calcCell = document.createElement('td'); calcCell.className = 'mone-calculation'; calcCell.dataset.label = 'MONE calculation';
