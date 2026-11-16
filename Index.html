@@ -513,6 +513,8 @@ function createBulkPreview(entries, people, totals, selected = {}) {
     if (picked.length === 1) { person = picked[0]; manuallySelected = true; }
     else if (found.length === 1 && !selected[entry.line]) person = found[0];
     else return {entry, suggestions, status:suggestions.length ? 'Possible matches — select and verify an employee.' : 'No suitable name matches; check spelling or personnel data.'};
+    const noLeaveCard = (person.vl == null || person.vl === '') && (person.sl == null || person.sl === '');
+    if (noLeaveCard) return {entry, person, suggestions, manuallySelected, status:'No leave card / leave credits on file; verify.'};
     if (!person.selectable || !idKey(person.employeeId)) return {entry, person, suggestions, manuallySelected, status:'Employee number missing or duplicated; review.'};
     const vl = Number(person.vl), sl = Number(person.sl);
     if (person.vl == null || person.vl === '' || person.sl == null || person.sl === '' || !Number.isFinite(vl) || !Number.isFinite(sl)) return {entry, person, suggestions, manuallySelected, status:'VL or SL balance unavailable; review.'};
@@ -948,6 +950,7 @@ function reportTag(row) {
   if (!row.person) return 'NAME_REVIEW';
   if (row.status.includes('more than once')) return 'DUPLICATE';
   if (row.status.includes('missing or duplicated')) return 'EMPLOYEE_ID_REVIEW';
+  if (row.status.startsWith('No leave card /')) return 'NO_LEAVE_CARD';
   if (row.status.includes('balance unavailable')) return 'BALANCE_UNAVAILABLE';
   if (row.status.includes('below 5')) return 'INSUFFICIENT_BALANCE';
   if (row.status.includes('Reduced')) return Number(row.entry.amount) % 5 === 0 ? 'INSUFFICIENT_BALANCE' : 'REQUEST_ADJUSTED';
