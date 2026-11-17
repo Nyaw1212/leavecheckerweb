@@ -468,7 +468,7 @@ function parseBulkMone(value) {
   return parsed;
 }
 function bulkCandidates(entry, people) {
-  const surname = bulkWords(entry.surname), given = bulkWords(entry.given), middle = bulkWords(entry.middle);
+  const surname = bulkWords(entry.surname), given = bulkWords(entry.given), middle = /^(?:n\s*\/\s*a|none|-)$/i.test(String(entry.middle || '').trim()) ? '' : bulkWords(entry.middle);
   return people.filter(person => {
     const pieces = String(person.name || '').split(',');
     if (pieces.length !== 2 || bulkWords(pieces[0]) !== surname) return false;
