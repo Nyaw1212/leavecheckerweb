@@ -84,6 +84,21 @@ function finishSignIn_(p, config) {
 }
 
 /** Access follows the anonymous setting in config_(). */
+const TEMP_BALANCE_SHEET = 'temporary_brought_forward_2026-10-31';
+function temporaryPersonnel_(book) {
+  const sheet = book.getSheetByName(TEMP_BALANCE_SHEET);
+  if (!sheet) return [];
+  const rows=sheet.getDataRange().getValues(), header=(rows.shift()||[]).map(v=>String(v||'').trim().toLowerCase());
+  const fields=['temporary_reference','name','as_of','vl','sl','fl','wl','spl','status','cross_match_status'];
+  if (fields.some(k=>header.indexOf(k)<0)) throw Error('Temporary balance sheet headers are incomplete.');
+  const get=(r,k)=>r[header.indexOf(k)];
+  const day=v=>v instanceof Date?Utilities.formatDate(v,Session.getScriptTimeZone(),'yyyy-MM-dd'):String(v==null?'':v).trim();
+  return rows.filter(r=>String(get(r,'temporary_reference')||'').trim()).map(r=>({
+    employeeId:String(get(r,'temporary_reference')||'').trim(), name:String(get(r,'name')||'').trim(),
+    asOf:day(get(r,'as_of')), vl:get(r,'vl'), sl:get(r,'sl'), fl:get(r,'fl'), wl:get(r,'wl'), spl:get(r,'spl'),
+    temporary:true, temporaryStatus:String(get(r,'status')||'').trim(), temporaryReview:String(get(r,'cross_match_status')||'').trim()
+  }));
+}
 function lookupBalance(session, employeeId) {
   const config = authorizedConfig_(session);
   employeeId = String(employeeId || '').trim();
@@ -98,7 +113,13 @@ function lookupBalance(session, employeeId) {
   const idIndex = indexes[0];
   const idKey = normalizeEmployeeId_(employeeId);
   const matches = data.filter(r => normalizeEmployeeId_(r[idIndex]) === idKey);
-  if (matches.length !== 1) return null;
+  if (matches.length !== 1) {
+    if (matches.length > 1) return null;
+    const temp = temporaryPersonnel_(SpreadsheetApp.openById(config.spreadsheet)).filter(p=>normalizeEmployeeId_(p.employeeId)===idKey);
+    if (temp.length!==1) return null;
+    const p=temp[0], state=latestMoneBalances_(SpreadsheetApp.openById(config.spreadsheet))[idKey], effective=effectiveMoneBalance_(p.vl,p.sl,state);
+    return {employee_id:p.employeeId,name:p.name,as_of:p.asOf,vl:effective.vl,sl:effective.sl,fl:p.fl,wl:p.wl,spl:p.spl,updated_at:'',temporary:true,temporaryReview:p.temporaryReview,moneRecorded:!!(state&&state.recorded),moneBlocked:!!effective.blocked};
+  }
   const row = matches[0];
   const result = {};
   expected.forEach((key, i) => { const v = row[indexes[i]]; result[key] = v instanceof Date ? Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd') : (v === '' ? null : String(v)); });
@@ -152,6 +173,14 @@ function searchPersonnel(session, query) {
       balances.vl = effective.vl; balances.sl = effective.sl;
       return {name: String(row[ni]), employeeId: id, selectable: !!key && counts[key] === 1, asOf, moneRecorded: !!(state && state.recorded), moneBlocked: !!effective.blocked, ...balances};
     }).sort((a, b) => a.name.localeCompare(b.name) || a.employeeId.localeCompare(b.employeeId));
+  const tempRows=temporaryPersonnel_(SpreadsheetApp.openById(config.spreadsheet)), tempCounts={};
+  tempRows.forEach(p=>{const key=normalizeEmployeeId_(p.employeeId);if(key)tempCounts[key]=(tempCounts[key]||0)+1;});
+  tempRows.filter(p=>normalize_(p.name).includes(q)).forEach(p=>{
+    const key=normalizeEmployeeId_(p.employeeId), state=latest[key], effective=effectiveMoneBalance_(p.vl,p.sl,state);
+    found.push({...p, vl:effective.vl,sl:effective.sl, selectable:!!key&&tempCounts[key]===1&&!counts[key],
+      moneRecorded:!!(state&&state.recorded),moneBlocked:!!effective.blocked});
+  });
+  found.sort((a,b)=>a.name.localeCompare(b.name)||a.employeeId.localeCompare(b.employeeId));
   return {items: found, more: false};
 }
 
