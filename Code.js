@@ -517,11 +517,11 @@ function parseMoneAttachment(session, fileName, base64) {
     }
     table.forEach(row => {
       for (let i = 0; i <= Math.min(9, row.length - 1); i++) {
-        const serial = String(row[i] || '').trim(), rank = String(row[i+1] || '').trim();
+        const rawSerial = String(row[i] || '').trim(), serial = /^\d+\.0+$/.test(rawSerial) ? rawSerial.replace(/\.0+$/, '') : rawSerial, rank = String(row[i+1] || '').trim();
         const numbered = /^\d+\.?$/.test(serial);
         const unnumbered = !serial && /^[a-z]{1,8}\s*\d[a-z0-9.\/-]*$/i.test(rank);
-        if ((!numbered && !unnumbered) || !/^[a-z][a-z0-9 .\/-]{1,24}$/i.test(rank) || !/[a-z]/i.test(rank) || !String(row[i+2] || '').trim() || !String(row[i+3] || '').trim()) continue;
-        found.push(Array.from({length:7}, (_, column) => String(row[i+column] == null ? '' : row[i+column]).replace(/[\t\r\n]+/g, ' ').trim()));
+        if ((!numbered && !unnumbered) || !/^[a-z][a-z0-9 .\/-]{1,99}$/i.test(rank) || !/[a-z]/i.test(rank) || !String(row[i+2] || '').trim() || !String(row[i+3] || '').trim()) continue;
+        found.push(Array.from({length:7}, (_, column) => column === 0 ? serial : String(row[i+column] == null ? '' : row[i+column]).replace(/[\t\r\n]+/g, ' ').trim()));
         break;
       }
     });
